@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 创作日期：2026-04-22，作者：leiyangjun — Spring Web/MVC 方向 Starter，已并入原 peach-mybatis（BaseMapper、BaseSqlProvider、PageHelper 等） -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.0.2</version>
+		<relativePath />
+	</parent>
+
+	<groupId>org.peach.common</groupId>
+	<artifactId>peach-common-start</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>jar</packaging>
+	<name>peach-common-start</name>
+	<description>Spring MVC / Web 与 MyBatis 统一 Starter：通用 BaseMapper、BaseSqlProvider、分层模型、PageHelper 分页（原独立模块 peach-mybatis 已合并至本工程，Java 包名仍为 org.peach.mybatis.*）</description>
+
+	<url>https://github.com/leiyangjun/peach-common-start</url>
+
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<id>leiyangjun</id>
+			<name>leiyangjun</name>
+			<roles>
+				<role>Project Maintainer</role>
+			</roles>
+		</developer>
+	</developers>
+
+	<scm>
+		<connection>scm:git:https://github.com/leiyangjun/peach-common-start.git</connection>
+		<developerConnection>scm:git:git@github.com:leiyangjun/peach-common-start.git</developerConnection>
+		<url>https://github.com/leiyangjun/peach-common-start</url>
+	</scm>
+
+	<distributionManagement>
+		<repository>
+			<id>central</id>
+			<name>Maven Central via Sonatype</name>
+			<url>https://central.sonatype.com/</url>
+		</repository>
+	</distributionManagement>
+
+	<properties>
+		<java.version>21</java.version>
+		<peach-dependencies.version>0.0.1-SNAPSHOT</peach-dependencies.version>
+		<springdoc-openapi.version>3.0.2</springdoc-openapi.version>
+		<swagger-jakarta.version>2.2.43</swagger-jakarta.version>
+		<central.publishing.maven.version>0.7.0</central.publishing.maven.version>
+		<maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.peach.pom</groupId>
+				<artifactId>peach-dependencies</artifactId>
+				<version>${peach-dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-autoconfigure</artifactId>
+		</dependency>
+		<!-- Web 与统一异常处理（@RestControllerAdvice） -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<!-- 明确提供 DataSource/JdbcTemplate 基础设施，保障 MyBatis 自动配置可创建 SqlSessionFactory -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jdbc</artifactId>
+		</dependency>
+		<!-- ValidAspect：使用 spring-aop + aspectjweaver（与 spring-boot-starter-aop 等价能力，避免部分 BOM 未托管 starter-aop 版本） -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-aop</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjweaver</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.mybatis.spring.boot</groupId>
+			<artifactId>mybatis-spring-boot-starter</artifactId>
+		</dependency>
+		<!-- 数据库连接池（默认提供 Druid，业务可按需覆盖 DataSource 实现） -->
+		<dependency>
+			<groupId>com.alibaba</groupId>
+			<artifactId>druid-spring-boot-starter</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.github.pagehelper</groupId>
+			<artifactId>pagehelper-spring-boot-starter</artifactId>
+		</dependency>
+		<!-- 兼容 Spring 7/Boot 4：显式覆盖 springdoc 版本，避免 Knife4j 传递旧版导致 NoSuchMethodError -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+			<version>${springdoc-openapi.version}</version>
+			<exclusions>
+				<!-- 创作日期：2026-04-25，作者：Codex — 避免非 jakarta swagger-annotations 与 jakarta 版本同包冲突 -->
+				<exclusion>
+					<groupId>io.swagger.core.v3</groupId>
+					<artifactId>swagger-annotations</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<!--
+			创作日期：2026-04-25，作者：Codex
+			Knife4j 4.5.0 当前与 Spring Boot 4 / Spring Framework 7 存在运行时兼容性问题（如 NoSuchMethodError）。
+			此处暂时注释，改为直接使用 Springdoc OpenAPI 3 统一版本链路，待 Knife4j 官方适配后再评估恢复。
+		-->
+		<!--
+		<dependency>
+			<groupId>com.github.xiaoymin</groupId>
+			<artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+		</dependency>
+		-->
+		<!-- OpenAPI 文档（Springdoc 3.x，兼容 Spring Boot 4） -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc-openapi.version}</version>
+			<exclusions>
+				<!-- 创作日期：2026-04-25，作者：Codex — 避免非 jakarta swagger-annotations 与 jakarta 版本同包冲突 -->
+				<exclusion>
+					<groupId>io.swagger.core.v3</groupId>
+					<artifactId>swagger-annotations</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<!--
+			创作日期：2026-04-25，作者：Codex
+			显式固定 swagger jakarta 三件套版本，确保运行时与 Springdoc 3.0.2 对齐，规避 Schema$SchemaResolution 缺类。
+		-->
+		<dependency>
+			<groupId>io.swagger.core.v3</groupId>
+			<artifactId>swagger-annotations-jakarta</artifactId>
+			<version>${swagger-jakarta.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.swagger.core.v3</groupId>
+			<artifactId>swagger-models-jakarta</artifactId>
+			<version>${swagger-jakarta.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.swagger.core.v3</groupId>
+			<artifactId>swagger-core-jakarta</artifactId>
+			<version>${swagger-jakarta.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ulisesbocchio</groupId>
+			<artifactId>jasypt-spring-boot-starter</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-text</artifactId>
+		</dependency>
+		<!-- 仅引入核心类：全局异常中的 AuthenticationException、当前用户工具中的凭据异常等；不含 OAuth2 -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+		</dependency>
+		<!-- 代码生成器能力默认随 starter 透出，业务工程可直接调用 GeneratorUtil -->
+		<dependency>
+			<groupId>org.mybatis.generator</groupId>
+			<artifactId>mybatis-generator-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<!-- 部分环境 fork 单测时默认堆过小会导致 Surefire 子进程 OOM，适当放宽 -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>-Xms128m -Xmx768m -XX:MaxMetaspaceSize=384m</argLine>
+					<forkCount>1</forkCount>
+					<reuseForks>true</reuseForks>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.sonatype.central</groupId>
+				<artifactId>central-publishing-maven-plugin</artifactId>
+				<version>${central.publishing.maven.version}</version>
+				<extensions>true</extensions>
+				<configuration>
+					<publishingServerId>central</publishingServerId>
+					<checksums>required</checksums>
+					<deploymentName>${project.groupId}:${project.artifactId}:${project.version}</deploymentName>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>release-sign</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>${maven-gpg-plugin.version}</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+</project>
+
+
