@@ -1,3 +1,4 @@
+org.peach.common.discovery.autoconfigure.PeachNacosDiscoveryMetadataAutoConfiguration
 org.peach.common.mvc.autoconfigure.ModuleCodeCheckConfiguration
 org.peach.common.mybatis.autoconfigure.ReadWriteDataSourceAutoConfiguration
 org.peach.common.mybatis.autoconfigure.BaseMybatisAutoConfiguration
@@ -5,4 +6,3 @@ org.peach.common.mvc.autoconfigure.ApisAutoConfiguration
 org.peach.common.mvc.autoconfigure.MvcExceptionAutoConfiguration
 org.peach.common.mvc.autoconfigure.SpringBeanUtilAutoConfiguration
 org.peach.common.mvc.autoconfigure.ValidAutoConfiguration
-

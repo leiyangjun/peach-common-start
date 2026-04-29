@@ -26,4 +26,3 @@ public class CommonQueryVO implements Serializable {
 	@Schema(description = "范围结束值（<=）")
 	private Object endValue;
 }
-

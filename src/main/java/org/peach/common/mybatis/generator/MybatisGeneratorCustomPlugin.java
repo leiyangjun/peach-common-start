@@ -10,6 +10,8 @@ import org.mybatis.generator.api.PluginAdapter;
 import org.mybatis.generator.api.dom.java.Field;
 import org.mybatis.generator.api.dom.java.FullyQualifiedJavaType;
 import org.mybatis.generator.api.dom.java.Interface;
+import org.mybatis.generator.api.dom.java.JavaVisibility;
+import org.mybatis.generator.api.dom.java.Method;
 import org.mybatis.generator.api.dom.java.TopLevelClass;
 import org.mybatis.generator.api.dom.xml.Document;
 
@@ -50,6 +52,7 @@ public class MybatisGeneratorCustomPlugin extends PluginAdapter {
 	private static final String FN_LOGIC_DELETE = "org.peach.common.mybatis.annotation.LogicDelete";
 	private static final String FN_SCHEMA = "io.swagger.v3.oas.annotations.media.Schema";
 	private static final String FN_MAPPER = "org.apache.ibatis.annotations.Mapper";
+	private static final String FN_DATA = "lombok.Data";
 
 	@Override
 	public boolean validate(List<String> warnings) {
@@ -61,6 +64,17 @@ public class MybatisGeneratorCustomPlugin extends PluginAdapter {
 		FullyQualifiedJavaType serializable = new FullyQualifiedJavaType("java.io.Serializable");
 		topLevelClass.addImportedType(serializable);
 		topLevelClass.addSuperInterface(serializable);
+		topLevelClass.addImportedType(new FullyQualifiedJavaType(FN_DATA));
+		topLevelClass.addAnnotation("@Data");
+		topLevelClass.addImportedType(new FullyQualifiedJavaType("java.io.Serial"));
+
+		Field serialVersionUID = new Field("serialVersionUID", new FullyQualifiedJavaType("long"));
+		serialVersionUID.setVisibility(JavaVisibility.PRIVATE);
+		serialVersionUID.setStatic(true);
+		serialVersionUID.setFinal(true);
+		serialVersionUID.setInitializationString("1L");
+		serialVersionUID.addAnnotation("@Serial");
+		topLevelClass.getFields().add(0, serialVersionUID);
 
 		FullyQualifiedJavaType tableNameAnn = new FullyQualifiedJavaType(FN_TABLE_NAME);
 		topLevelClass.addImportedType(tableNameAnn);
@@ -75,6 +89,18 @@ public class MybatisGeneratorCustomPlugin extends PluginAdapter {
 		}
 
 		return true;
+	}
+
+	@Override
+	public boolean modelGetterMethodGenerated(Method method, TopLevelClass topLevelClass, IntrospectedColumn introspectedColumn,
+			IntrospectedTable introspectedTable, Plugin.ModelClassType modelClassType) {
+		return false;
+	}
+
+	@Override
+	public boolean modelSetterMethodGenerated(Method method, TopLevelClass topLevelClass, IntrospectedColumn introspectedColumn,
+			IntrospectedTable introspectedTable, Plugin.ModelClassType modelClassType) {
+		return false;
 	}
 
 	@Override
@@ -112,6 +138,7 @@ public class MybatisGeneratorCustomPlugin extends PluginAdapter {
 	@Override
 	public boolean clientGenerated(Interface interfaze, IntrospectedTable introspectedTable) {
 		interfaze.getMethods().clear();
+		interfaze.getImportedTypes().clear();
 
 		interfaze.getSuperInterfaceTypes().clear();
 		FullyQualifiedJavaType entityType = introspectedTable.getRules().calculateAllFieldsClass();

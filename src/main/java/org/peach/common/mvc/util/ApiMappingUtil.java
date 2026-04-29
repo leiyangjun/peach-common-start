@@ -83,7 +83,7 @@ public final class ApiMappingUtil {
 	 * 按 Method 与关键字过滤 API。
 	 *
 	 * @param method    HTTP Method（GET/POST/...）
-	 * @param keyword   模糊关键字（匹配 path 与接口说明，可空）
+	 * @param keyword   模糊关键字（匹配路径与接口说明，可空）
 	 * @return 过滤后的 API 列表
 	 */
 	public static List<ApiMeta> searchApis(String method, String keyword) {

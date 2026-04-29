@@ -27,4 +27,3 @@ public class BigPageVO implements Serializable {
 	@Max(value = 1000, message = "pageSize 最大值为1000")
 	private Integer pageSize = 200;
 }
-

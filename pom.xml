@@ -111,47 +111,35 @@
 			<groupId>com.github.pagehelper</groupId>
 			<artifactId>pagehelper-spring-boot-starter</artifactId>
 		</dependency>
-		<!-- 兼容 Spring 7/Boot 4：显式覆盖 springdoc 版本，避免 Knife4j 传递旧版导致 NoSuchMethodError -->
+		<!-- 兼容 Spring 7/Boot 4：显式覆盖 springdoc 版本 -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
 			<version>${springdoc-openapi.version}</version>
 			<exclusions>
-				<!-- 创作日期：2026-04-25，作者：Codex — 避免非 jakarta swagger-annotations 与 jakarta 版本同包冲突 -->
 				<exclusion>
 					<groupId>io.swagger.core.v3</groupId>
 					<artifactId>swagger-annotations</artifactId>
 				</exclusion>
 			</exclusions>
 		</dependency>
-		<!--
-			创作日期：2026-04-25，作者：Codex
-			Knife4j 4.5.0 当前与 Spring Boot 4 / Spring Framework 7 存在运行时兼容性问题（如 NoSuchMethodError）。
-			此处暂时注释，改为直接使用 Springdoc OpenAPI 3 统一版本链路，待 Knife4j 官方适配后再评估恢复。
-		-->
 		<!--
 		<dependency>
 			<groupId>com.github.xiaoymin</groupId>
 			<artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
 		</dependency>
 		-->
-		<!-- OpenAPI 文档（Springdoc 3.x，兼容 Spring Boot 4） -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>${springdoc-openapi.version}</version>
 			<exclusions>
-				<!-- 创作日期：2026-04-25，作者：Codex — 避免非 jakarta swagger-annotations 与 jakarta 版本同包冲突 -->
 				<exclusion>
 					<groupId>io.swagger.core.v3</groupId>
 					<artifactId>swagger-annotations</artifactId>
 				</exclusion>
 			</exclusions>
 		</dependency>
-		<!--
-			创作日期：2026-04-25，作者：Codex
-			显式固定 swagger jakarta 三件套版本，确保运行时与 Springdoc 3.0.2 对齐，规避 Schema$SchemaResolution 缺类。
-		-->
 		<dependency>
 			<groupId>io.swagger.core.v3</groupId>
 			<artifactId>swagger-annotations-jakarta</artifactId>
@@ -197,6 +185,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
+		</dependency>
+		<!-- 可选：存在时由 PeachNacosDiscoveryMetadataAutoConfiguration 写入实例元数据 -->
+		<dependency>
+			<groupId>com.alibaba.cloud</groupId>
+			<artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+			<optional>true</optional>
 		</dependency>
 	</dependencies>
 

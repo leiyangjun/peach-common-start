@@ -1,6 +1,7 @@
 package org.peach.common.mybatis.generator;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -199,6 +200,7 @@ public final class BaseMapperGeneratorUtil {
 			MyBatisGenerator generator = new MyBatisGenerator(configuration,
 					new DefaultShellCallback(request.isOverwrite()), warnings);
 			generator.generate(null);
+			cleanupMapperImports(request);
 			return Collections.unmodifiableList(new ArrayList<>(warnings));
 		} catch (InvalidConfigurationException e) {
 			throw new IllegalArgumentException("MyBatis Generator 配置无效: " + e.getErrors(), e);
@@ -219,6 +221,36 @@ public final class BaseMapperGeneratorUtil {
 	}
 
 	/**
+	 * 兼容 MyBatis3Simple 在空方法 Mapper 上仍输出冗余 import 的问题：按已生成表逐个清理。
+	 */
+	private static void cleanupMapperImports(BaseMapperGeneratorRequest request) throws IOException {
+		Path javaRoot = Path.of(request.getJavaSourceRoot()).toAbsolutePath().normalize();
+		Path mapperDir = javaRoot.resolve(request.getMapperPackage().replace('.', '/'));
+		for (TableSpec spec : request.getTables()) {
+			String domain = StringUtils.isNotBlank(spec.getDomainObjectName())
+					? spec.getDomainObjectName().trim()
+					: BaseMapperMvcSourceGenerator.tableNameToDomainName(spec.getTableName());
+			Path mapperFile = mapperDir.resolve(domain + "Mapper.java");
+			if (!Files.isRegularFile(mapperFile)) {
+				continue;
+			}
+			String src = Files.readString(mapperFile);
+			String cleaned = src
+					.replace("import java.util.List;\n", "")
+					.replace("import org.apache.ibatis.annotations.Delete;\n", "")
+					.replace("import org.apache.ibatis.annotations.Insert;\n", "")
+					.replace("import org.apache.ibatis.annotations.Result;\n", "")
+					.replace("import org.apache.ibatis.annotations.Results;\n", "")
+					.replace("import org.apache.ibatis.annotations.Select;\n", "")
+					.replace("import org.apache.ibatis.annotations.Update;\n", "")
+					.replace("import org.apache.ibatis.type.JdbcType;\n", "");
+			if (!cleaned.equals(src)) {
+				Files.writeString(mapperFile, cleaned);
+			}
+		}
+	}
+
+	/**
 	 * 构建与 XML 配置等价的 {@link Configuration}，便于在测试中校验或二次扩展。
 	 */
 	public static Configuration buildConfiguration(BaseMapperGeneratorRequest request) {
@@ -228,7 +260,7 @@ public final class BaseMapperGeneratorUtil {
 
 		Context context = new Context(ModelType.FLAT);
 		context.setId(request.getContextId());
-		context.setTargetRuntime("MyBatis3");
+		context.setTargetRuntime("MyBatis3Simple");
 		context.addProperty("javaFileEncoding", request.getEncoding());
 
 		CommentGeneratorConfiguration comment = new CommentGeneratorConfiguration();

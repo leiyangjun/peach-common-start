@@ -23,6 +23,7 @@ final class BaseMapperMvcSourceGenerator {
 
 	/** 单行 {@code private} 字段；若实体字段上一行有注解，可能需手调。 */
 	private static final Pattern PRIVATE_FIELD = Pattern.compile("private\\s+(.+?)\\s+(\\w+)\\s*;");
+	private static final Pattern SCHEMA_DESC = Pattern.compile("@Schema\\(description\\s*=\\s*\"([^\"]*)\"\\)");
 
 	private BaseMapperMvcSourceGenerator() {
 	}
@@ -35,7 +36,7 @@ final class BaseMapperMvcSourceGenerator {
 			for (TableSpec spec : request.getTables()) {
 				String domain = StringUtils.isNotBlank(spec.getDomainObjectName()) ? spec.getDomainObjectName().trim()
 						: tableNameToDomainName(spec.getTableName());
-				String mapping = requestMappingFor(domain);
+				String mapping = requestMappingForTable(spec.getTableName(), domain);
 				all.addAll(writeOneTable(javaRoot, request.getEntityPackage(), request.getMapperPackage(), appBase, domain, mapping));
 			}
 			return all;
@@ -73,8 +74,19 @@ final class BaseMapperMvcSourceGenerator {
 		return sb.toString();
 	}
 
-	private static String requestMappingFor(String domain) {
-		return "/api/" + (Character.toLowerCase(domain.charAt(0)) + domain.substring(1));
+	private static String requestMappingForTable(String tableName, String domain) {
+		String raw = trimBackticks(StringUtils.trimToEmpty(tableName)).toLowerCase();
+		String[] parts = StringUtils.split(raw, "_");
+		if (parts != null && parts.length > 0) {
+			StringBuilder sb = new StringBuilder("/api");
+			for (String part : parts) {
+				if (StringUtils.isNotBlank(part)) {
+					sb.append("/").append(part);
+				}
+			}
+			return sb.toString();
+		}
+		return "/api/" + Character.toLowerCase(domain.charAt(0)) + domain.substring(1);
 	}
 
 	private static List<Path> writeOneTable(Path javaRoot, String entityPackage, String mapperPackage, String appBase, String domain,
@@ -159,8 +171,14 @@ final class BaseMapperMvcSourceGenerator {
 
 	private static List<ParsedField> parseEntityFields(String src) {
 		List<ParsedField> out = new ArrayList<>();
+		String lastSchema = null;
 		for (String line : src.split("\r\n|\n")) {
 			if (StringUtils.isBlank(line)) {
+				continue;
+			}
+			Matcher schemaMatcher = SCHEMA_DESC.matcher(line);
+			if (schemaMatcher.find()) {
+				lastSchema = schemaMatcher.group(1).trim();
 				continue;
 			}
 			if (line.contains(" static ")) {
@@ -177,7 +195,8 @@ final class BaseMapperMvcSourceGenerator {
 				if (isKeywordLike(typ)) {
 					continue;
 				}
-				out.add(new ParsedField(typ, n));
+				out.add(new ParsedField(typ, n, StringUtils.defaultIfBlank(lastSchema, "属性 " + n)));
+				lastSchema = null;
 			}
 		}
 		return out;
@@ -203,7 +222,7 @@ final class BaseMapperMvcSourceGenerator {
 		} else {
 			for (ParsedField f : fields) {
 				sb.append("\n");
-				sb.append("\t@Schema(description = \"属性 ").append(f.name).append("\")\n");
+				sb.append("\t@Schema(description = \"").append(escapeJavaString(f.description)).append("\")\n");
 				sb.append("\tprivate ").append(f.type).append(" ").append(f.name).append(";\n");
 			}
 		}
@@ -233,8 +252,8 @@ final class BaseMapperMvcSourceGenerator {
 		String implF = wp.replace(".web", ".service.impl") + "." + implN;
 		String s = "package " + wp + ";\n\n" + "import org.peach.common.mvc.web.BaseController;\n"
 				+ "import org.springframework.web.bind.annotation.RequestMapping;\n"
-				+ "import org.springframework.web.bind.annotation.RestController;\n\n" + "import " + vof + ";\n" + "import " + sif
-				+ ";\n" + "import " + implF + ";\n\n" + "import io.swagger.v3.oas.annotations.tags.Tag;\n\n" + "/**\n * 继承 {@link BaseController}。\n */\n" + "@RestController\n" + "@RequestMapping(\""
+				+ "import org.springframework.web.bind.annotation.RestController;\n\n" + "import " + vof + ";\n"
+				+ "import " + implF + ";\n\n" + "import io.swagger.v3.oas.annotations.tags.Tag;\n\n" + "/**\n * 继承 {@link BaseController}。\n */\n" + "@RestController\n" + "@RequestMapping(\""
 				+ requestMapping + "\")\n" + "@Tag(name = \"" + domain + "接口\", description = \"依据代码生成，可改\")\n" + "public class "
 				+ cName + " extends BaseController<" + voName + ", " + implN + "> {\n\n" + "\tpublic " + cName
 				+ "(" + implN + " service) {\n" + "\t\tsuper(service);\n" + "\t}\n" + "}\n";
@@ -264,6 +283,10 @@ final class BaseMapperMvcSourceGenerator {
 		return fqn.substring(fqn.lastIndexOf('.') + 1);
 	}
 
+	private static String escapeJavaString(String s) {
+		return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
+	}
+
 	private static Path writeFile(Path javaRoot, String pkg, String file, String text) throws IOException {
 		Path p = javaRoot.resolve(pkg.replace('.', '/')).resolve(file);
 		Files.createDirectories(p.getParent());
@@ -274,10 +297,12 @@ final class BaseMapperMvcSourceGenerator {
 	private static final class ParsedField {
 		final String type;
 		final String name;
+		final String description;
 
-		ParsedField(String type, String name) {
+		ParsedField(String type, String name, String description) {
 			this.type = type;
 			this.name = name;
+			this.description = description;
 		}
 	}
 }
