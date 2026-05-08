@@ -56,14 +56,34 @@ public class SwaggerOpenApiCustomizer implements OpenApiCustomizer {
 			applyContactPortalUrl(openApi, req, true);
 			return;
 		}
-		if (refererPathHasServicePrefix(req)) {
-			openApi.setServers(List.of(server(gatewayPathPrefix, "判定：Referer 路径含本服务在网关下的前缀")));
+		if (refererIndicatesGatewayAccess(req)) {
+			openApi.setServers(List.of(server(gatewayPathPrefix, "判定：Referer 含本服务在网关下的路径前缀")));
 			applyContactPortalUrl(openApi, req, true);
 			return;
 		}
 		if (forwardedClientPortDiffersFromServerPort(req)) {
 			openApi.setServers(List.of(server(gatewayPathPrefix,
 					"判定：X-Forwarded 侧端口与 server.port 不一致（典型经网关访问）")));
+			applyContactPortalUrl(openApi, req, true);
+			return;
+		}
+		/*
+		 * Boot 在 framework 策略下会用 ForwardedHeaderFilter 解析转发链，部分场景下原始 X-Forwarded-* 在后续读头时已不可见，
+		 * 但 ServletUriComponentsBuilder 仍能还原「客户端所见」主机与端口。与 server.port 不一致时视为经网关/反向代理。
+		 */
+		if (resolvedClientPortDiffersFromServerPort(req)) {
+			openApi.setServers(List.of(server(gatewayPathPrefix,
+					"判定：解析后客户端端口与 server.port 不一致（经网关或反向代理）")));
+			applyContactPortalUrl(openApi, req, true);
+			return;
+		}
+		/*
+		 * ForwardedHeaderFilter 消费原始 X-Forwarded-* 后，getHeader 可能已空，但 Servlet 规范下 getServerPort()/getServerName()
+		 * 仍会被调整为客户端所见（与 server.port 常不一致）。个别服务/请求链路上 UriComponents 解析结果与之一致性略差，故单独兜底。
+		 */
+		if (servletClientPortDiffersFromServerPort(req)) {
+			openApi.setServers(List.of(server(gatewayPathPrefix,
+					"判定：getServerPort 与 server.port 不一致（经网关或反向代理）")));
 			applyContactPortalUrl(openApi, req, true);
 			return;
 		}
@@ -242,13 +262,19 @@ public class SwaggerOpenApiCustomizer implements OpenApiCustomizer {
 		return req.getHeader("X-Peach-Gateway-Prefix");
 	}
 
-	private boolean refererPathHasServicePrefix(HttpServletRequest req) {
+	/**
+	 * Referer 可能因编码、片段或非标准 URL 导致仅解析 path 失败；经网关打开 Swagger 时 URL 中必含 {@code /{serviceId}/}。
+	 */
+	private boolean refererIndicatesGatewayAccess(HttpServletRequest req) {
 		String ref = req.getHeader("Referer");
 		if (!StringUtils.hasText(ref)) {
 			return false;
 		}
+		if (ref.contains(gatewayPathPrefix)) {
+			return true;
+		}
 		try {
-			URI uri = URI.create(ref);
+			URI uri = URI.create(ref.trim());
 			String p = uri.getPath();
 			return p != null && (p.startsWith(gatewayPathPrefix + "/") || p.equals(gatewayPathPrefix));
 		}
@@ -273,6 +299,38 @@ public class SwaggerOpenApiCustomizer implements OpenApiCustomizer {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * 与 {@link ServletUriComponentsBuilder#fromRequest(HttpServletRequest)} 一致的有效端口（含 scheme 默认 80/443）。
+	 * <p>
+	 * 直连时若 {@code Host} 未带端口，{@code UriComponents} 无显式端口会落成 80/443，与 {@code server.port}(如 8084) 比较会误判「经网关」；
+	 * 此时 {@link HttpServletRequest#getServerPort()} 仍等于本容器端口且未被 ForwardedHeaderFilter 改写，应视为直连。
+	 * </p>
+	 */
+	private boolean resolvedClientPortDiffersFromServerPort(HttpServletRequest req) {
+		try {
+			UriComponents uc = ServletUriComponentsBuilder.fromRequest(req).build();
+			int p = effectivePort(uc);
+			if (p <= 0) {
+				return false;
+			}
+			int servletPort = req.getServerPort();
+			int explicitUriPort = uc.getPort();
+			if (servletPort == serverPort && explicitUriPort < 0 && (p == 80 || p == 443)) {
+				return false;
+			}
+			return p != serverPort;
+		}
+		catch (Exception ex) {
+			return false;
+		}
+	}
+
+	/** 依赖 {@code server.forward-headers-strategy=framework} 时 ForwardedHeaderFilter 对本地连接端口的修正。 */
+	private boolean servletClientPortDiffersFromServerPort(HttpServletRequest req) {
+		int sp = req.getServerPort();
+		return sp > 0 && sp != serverPort;
 	}
 
 	private static int parseFirstPort(String header) {
