@@ -71,6 +71,21 @@ public class BaseSqlProvider {
 		private static String dbFieldError() {
 			return "表字段注解配置冲突（如同类上多个 @ID / @LogicDelete）";
 		}
+
+		/** selectUnique / selectUniqueValid：条件对象中没有任何 @Unique 字段为非 null 时 */
+		private static String selectUniqueNoCondition() {
+			return "按唯一键查询时，条件对象中至少应有一个 @Unique 字段为非 null";
+		}
+
+		/** voClass 上未标注任何 @Unique 时 */
+		private static String selectUniqueNoAnnotatedFields() {
+			return "按唯一键查询时，voClass 须包含至少一个 @Unique 字段";
+		}
+
+		/** voClass 上标注多个 @Unique，与单字段唯一查询语义冲突 */
+		private static String selectUniqueMultiAnnotatedFields() {
+			return "按唯一键查询时，仅允许一个 @Unique 字段";
+		}
 	}
 
 	/** 读取实体属性（实例），避免 JSON 往返序列化。 */
@@ -391,11 +406,15 @@ public class BaseSqlProvider {
 	/**
 	 * 生成 {@link org.peach.common.mybatis.mapper.BaseMapper#selectBaseOne} 的
 	 * SELECT：条件同全列策略列表查询，仅追加 {@code LIMIT 1}，不包含排序。
+	 * <p>
+	 * 入参须为 Mapper 单参数形态（无 {@code @Param}），占位符使用 {@code #{column}}，与 MyBatis 单参数绑定规则一致；
+	 * 避免 Provider 收到 {@code ParamMap} 时在 Java 17+ 触发 {@code InaccessibleObjectException}。
+	 * </p>
 	 *
 	 * @param entity 查询实体（等值条件）
 	 * @return 动态 SQL 字符串
 	 */
-	public String selectBaseOneSQL(@Param("entity") Object entity) {
+	public String selectBaseOneSQL(Object entity) {
 		String tableName = getTableName(entity);
 		List<String> columns = getTableColumns(entity);
 		String xinhao = StringUtils.join(getUpperTableColumns(entity), ",");
@@ -404,7 +423,7 @@ public class BaseSqlProvider {
 		baseSQL.FROM(tableName);
 		for (String column : columns) {
 			if (prop(entity, column) != null) {
-				baseSQL.WHERE(rename(column) + "=#{entity." + column + "}");
+				baseSQL.WHERE(rename(column) + "=#{" + column + "}");
 			}
 		}
 		return baseSQL.toString() + " limit 1";
@@ -697,6 +716,63 @@ public class BaseSqlProvider {
 		} else {
 			throw new PersistenceException(ProviderErrors.tableKeyError());
 		}
+	}
+
+	/**
+	 * 生成 {@link org.peach.common.mybatis.mapper.BaseMapper#selectUnique}：元数据来自
+	 * {@code voClass}，条件值来自 {@code entity}；仅 {@link Unique} 列且属性非
+	 * {@code null} 参与等值 WHERE，<strong>不使用主键</strong>（适合「只带用户名查 admin」等场景），
+	 * 列集合同 {@link #selectBaseOneSQL}，末尾 {@code LIMIT 1}。
+	 *
+	 * @param entity  条件对象（如仅设置 userName=admin）
+	 * @param voClass 表映射类型（解析表名、列、@Unique）
+	 * @return 动态 SQL
+	 */
+	public String selectUniqueSQL(@Param("entity") Object entity, @Param("voClass") Class<?> voClass) {
+		return buildSelectUniqueCoreSql(entity, voClass).toString() + " limit 1";
+	}
+
+	/**
+	 * 生成 {@link org.peach.common.mybatis.mapper.BaseMapper#selectUniqueValid}：在
+	 * {@link #selectUniqueSQL} 条件上追加逻辑删除列为有效值（无映射列则不加该项）。
+	 *
+	 * @param entity  条件对象
+	 * @param voClass 表映射类型
+	 * @return 动态 SQL
+	 */
+	public String selectUniqueValidSQL(@Param("entity") Object entity, @Param("voClass") Class<?> voClass) {
+		SQL baseSQL = buildSelectUniqueCoreSql(entity, voClass);
+		String logicField = getLogicDeleteField(voClass, false);
+		List<String> columns = getTableColumns(voClass);
+		if (StringUtils.isNotEmpty(logicField) && columns.contains(logicField)) {
+			baseSQL.WHERE(rename(logicField) + "=" + getLogicValidValue(voClass));
+		}
+		return baseSQL.toString() + " limit 1";
+	}
+
+	/**
+	 * {@link #selectUniqueSQL} / {@link #selectUniqueValidSQL} 共用的 SELECT + FROM + WHERE（不含 limit）。
+	 */
+	private SQL buildSelectUniqueCoreSql(Object entity, Class<?> voClass) {
+		List<String> uniques = getUnique(voClass);
+		if (CollectionUtils.isEmpty(uniques)) {
+			throw new PersistenceException(ProviderErrors.selectUniqueNoAnnotatedFields());
+		}
+		if (uniques.size() > 1) {
+			throw new PersistenceException(ProviderErrors.selectUniqueMultiAnnotatedFields());
+		}
+		String tableName = getTableName(voClass);
+		String selectList = StringUtils.join(getUpperTableColumns(voClass), ",").toUpperCase();
+		SQL baseSQL = new SQL();
+		baseSQL.SELECT(selectList);
+		baseSQL.FROM(tableName);
+		String uniqueField = uniques.get(0);
+		Object uniqueValue = prop(entity, uniqueField);
+		if (uniqueValue == null) {
+			throw new PersistenceException(ProviderErrors.selectUniqueNoCondition());
+		}
+		baseSQL.WHERE(rename(uniqueField) + "=#{entity." + uniqueField + "}");
+		return baseSQL;
 	}
 
 	/**

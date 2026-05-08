@@ -15,7 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 /**
  * 当前登录用户工具类：从当前 Servlet 请求的<strong>查询参数</strong>读取网关注入的身份快照（本 Starter 不引入 OAuth2）。
  * <p>
- * 参数名与 {@code peach-gateway} 中 {@code PeachGatewayForwardedUserGatewayFilter} 追加到下游 URI 的约定一致。
+ * 参数名与 {@code peach-gateway} 中 {@code org.peach.gateway.security.UserForwardingGlobalFilter} 写入下游查询字符串的约定一致。
  * 业务微服务应部署在隔离网络中，仅接受来自网关的流量，避免终端伪造查询参数。
  * </p>
  * <p>

@@ -113,12 +113,15 @@ public interface BaseMapper<T extends Serializable> {
 
 	/**
 	 * 与 {@link #selectBase} WHERE 语义相同，仅返回第一条（{@code LIMIT 1}）；不生成 {@code ORDER BY}，多条命中时由数据库决定返回哪一条。
+	 * <p>
+	 * 单参数且不使用 {@code @Param}，避免 Java 17+ 下 MyBatis 将 {@code ParamMap} 传入 Provider 时触发模块封装反射异常。
+	 * </p>
 	 *
 	 * @param entity 查询条件实体（等值条件）
 	 * @return 单条记录，可能为 {@code null}
 	 */
 	@SelectProvider(type = BaseSqlProvider.class, method = "selectBaseOneSQL")
-	T selectBaseOne(@Param("entity") T entity);
+	T selectBaseOne(T entity);
 
 	/**
 	 * 条件查询（全列策略）：语义同 {@link #selectBase}，列集合为 {@code getTableColumns(entity)}。
@@ -187,6 +190,34 @@ public interface BaseMapper<T extends Serializable> {
 	 */
 	@SelectProvider(type = BaseSqlProvider.class, method = "checkExistSQL")
 	Boolean checkExist(T entity);
+
+	/**
+	 * 按 {@link org.peach.common.mybatis.annotation.Unique} 列等值查询一条（标准列策略，{@code LIMIT 1}）。
+	 * <p>
+	 * {@code voClass} 解析表名、列与哪些字段带 {@code @Unique}；{@code entity} 仅提供条件值，其中<strong>非
+	 * {@code null}</strong>的 {@code @Unique} 属性才会进入 WHERE（例如用户表只设 {@code userName=admin} 即可查
+	 * admin）。<strong>不使用主键、不排除当前行</strong>，与 {@link #checkExist} 的语义不同。
+	 * </p>
+	 * <p>
+	 * 不追加逻辑删除条件，可能命中已逻辑删除行；若只要有效数据请用 {@link #selectUniqueValid}。
+	 * </p>
+	 *
+	 * @param entity  条件对象（如仅填充唯一键相关字段）
+	 * @param voClass 实体类型，须含至少一个 {@code @Unique} 字段定义
+	 * @return 命中首条或 {@code null}
+	 */
+	@SelectProvider(type = BaseSqlProvider.class, method = "selectUniqueSQL")
+	T selectUnique(@Param("entity") Object entity, @Param("voClass") Class<?> voClass);
+
+	/**
+	 * 在 {@link #selectUnique} 相同条件上，追加逻辑删除列为「有效」取值，仅查未删除数据。
+	 *
+	 * @param entity  条件对象，语义同 {@link #selectUnique}
+	 * @param voClass 实体类型
+	 * @return 命中首条或 {@code null}
+	 */
+	@SelectProvider(type = BaseSqlProvider.class, method = "selectUniqueValidSQL")
+	T selectUniqueValid(@Param("entity") Object entity, @Param("voClass") Class<?> voClass);
 
 	/**
 	 * 对多个 {@link org.peach.common.mybatis.annotation.Unique} 字段做「或」语义下的重复计数（以 Provider 生成 SQL 为准）。

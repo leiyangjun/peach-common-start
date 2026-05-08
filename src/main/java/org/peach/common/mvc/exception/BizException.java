@@ -6,25 +6,22 @@ import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
 import org.peach.common.mvc.result.ApiResult;
 import org.peach.common.mvc.result.code.ApiResultCodeRules;
+import org.peach.common.mvc.result.code.ApiResultCodeSpec;
 import org.peach.common.mvc.result.code.ApiResultCustomCode;
+import org.peach.common.mvc.result.code.ApiResultHttp401;
+import org.peach.common.mvc.result.code.ApiResultHttp403;
 import org.springframework.http.HttpStatus;
 
 import lombok.Getter;
 
 /**
- * 业务异常（非受检）：携带 {@link ApiResultCustomCode}，由 {@link GlobalExceptionHandler} 转为 {@link ApiResult}
- * 并统一打日志（客户端错误多为 WARN，服务端错误多为 ERROR，含 cause 时打印完整堆栈）。
+ * 业务异常（非受检）：由 {@link GlobalExceptionHandler} 转为 {@link ApiResult} 并统一打日志。
  * <p>
- * 业界常见写法要点：{@code serialVersionUID}、明确 HTTP 语义、可链式原因 {@link #getCause()}、工厂方法表达意图。<br>
- * 不在构造方法内打日志，避免副作用与重复记录；日志仅在全局处理器中输出。
+ * 请使用静态工厂方法构造，勿直接 {@code new}（构造器均私有）。
  * </p>
  * <p>
- * 若 {@link #responseMessage} 非空，全局处理时优先将其作为 {@link ApiResult#getMsg()}（如聚合校验明细），
- * 否则使用 {@link ApiResultCustomCode#msg()}。
- * </p>
- * <p>
- * 当前与 {@link ApiResult#fail400(org.peach.common.mvc.result.code.ApiResultCustomCode)} /
- * {@link ApiResult#fail500(org.peach.common.mvc.result.code.ApiResultCustomCode)} 对齐，仅支持 HTTP 400 / 500。
+ * 与 {@link ApiResult#fail400} / {@link ApiResult#fail401} / {@link ApiResult#fail403} /
+ * {@link ApiResult#fail500} 语义对齐。
  * </p>
  *
  * @author leiyangjun
@@ -35,45 +32,82 @@ public class BizException extends RuntimeException {
 	@Serial
 	private static final long serialVersionUID = 1L;
 
-	/** 与响应 HTTP 状态一致，用于网关、监控与客户端处理。 */
 	private final HttpStatus httpStatus;
 
-	/** 业务错误码与默认文案，将参与统一 {@code code} / {@code msg} 拼接。 */
+	/** HTTP 400 / 500 时使用；与 {@link #httpCodeSpec} 互斥。 */
 	private final ApiResultCustomCode customCode;
 
+	/** HTTP 401 / 403 时使用；与 {@link #customCode} 互斥。 */
+	private final ApiResultCodeSpec httpCodeSpec;
+
 	/**
-	 * 非空时作为 {@link ApiResult#getMsg()}，与 {@link #customCode}{@code .msg()} 解耦（如字段级校验汇总）。
+	 * 非空时作为对外 {@link ApiResult#getMsg()}，否则使用枚举 / 自定义码默认文案。
 	 */
 	private final String responseMessage;
 
-	public BizException(HttpStatus httpStatus, ApiResultCustomCode customCode) {
-		this(httpStatus, customCode, null, null);
-	}
-
-	public BizException(HttpStatus httpStatus, ApiResultCustomCode customCode, Throwable cause) {
-		this(httpStatus, customCode, null, cause);
-	}
+	// --- 400 / 500：ApiResultCustomCode ---
 
 	private BizException(HttpStatus httpStatus, ApiResultCustomCode customCode, String responseMessage, Throwable cause) {
-		super(StringUtils.isNotBlank(responseMessage) ? responseMessage : resolveMessage(customCode), cause);
-		this.httpStatus = validateStatus(httpStatus);
+		super(resolveMessageForCustom(customCode, responseMessage), cause);
+		this.httpStatus = validateCustomHttpStatus(httpStatus);
 		this.customCode = validateCode(customCode);
-		this.responseMessage = StringUtils.isBlank(responseMessage) ? null : responseMessage;
+		this.httpCodeSpec = null;
+		this.responseMessage = blankToNull(responseMessage);
 	}
 
-	private static String resolveMessage(ApiResultCustomCode customCode) {
-		return Objects.requireNonNull(customCode, "customCode").msg();
-	}
-
-	private static HttpStatus validateStatus(HttpStatus httpStatus) {
+	private static HttpStatus validateCustomHttpStatus(HttpStatus httpStatus) {
 		if (httpStatus == null) {
 			throw new IllegalArgumentException("httpStatus 不能为空");
 		}
 		if (httpStatus != HttpStatus.BAD_REQUEST && httpStatus != HttpStatus.INTERNAL_SERVER_ERROR) {
 			throw new IllegalArgumentException(
-					"BizException 当前仅支持 HttpStatus.BAD_REQUEST(400) 或 INTERNAL_SERVER_ERROR(500)");
+					"BizException（customCode）仅支持 BAD_REQUEST(400) 或 INTERNAL_SERVER_ERROR(500)");
 		}
 		return httpStatus;
+	}
+
+	private static String resolveMessageForCustom(ApiResultCustomCode customCode, String responseMessage) {
+		if (StringUtils.isNotBlank(responseMessage)) {
+			return responseMessage;
+		}
+		return Objects.requireNonNull(customCode, "customCode").msg();
+	}
+
+	// --- 401 / 403：ApiResultCodeSpec ---
+
+	private BizException(HttpStatus httpStatus, ApiResultCodeSpec httpCodeSpec, String responseMessage, Throwable cause) {
+		super(resolveMessageForSpec(httpCodeSpec, responseMessage), cause);
+		this.httpStatus = validateHttpSpecStatus(httpStatus, httpCodeSpec);
+		this.httpCodeSpec = Objects.requireNonNull(httpCodeSpec, "httpCodeSpec");
+		this.customCode = null;
+		this.responseMessage = blankToNull(responseMessage);
+	}
+
+	private static String resolveMessageForSpec(ApiResultCodeSpec spec, String responseMessage) {
+		if (StringUtils.isNotBlank(responseMessage)) {
+			return responseMessage;
+		}
+		return Objects.requireNonNull(spec, "httpCodeSpec").defaultMessage();
+	}
+
+	private static HttpStatus validateHttpSpecStatus(HttpStatus httpStatus, ApiResultCodeSpec spec) {
+		if (httpStatus == null) {
+			throw new IllegalArgumentException("httpStatus 不能为空");
+		}
+		int fam = spec.family();
+		if (httpStatus == HttpStatus.UNAUTHORIZED && fam == 401) {
+			return httpStatus;
+		}
+		if (httpStatus == HttpStatus.FORBIDDEN && fam == 403) {
+			return httpStatus;
+		}
+		throw new IllegalArgumentException(
+				"BizException（httpCodeSpec）须为 UNAUTHORIZED+401 族 或 FORBIDDEN+403 族，当前 httpStatus=" + httpStatus
+						+ ", spec.family=" + fam);
+	}
+
+	private static String blankToNull(String s) {
+		return StringUtils.isBlank(s) ? null : s;
 	}
 
 	private static ApiResultCustomCode validateCode(ApiResultCustomCode customCode) {
@@ -85,31 +119,82 @@ public class BizException extends RuntimeException {
 		return c;
 	}
 
-	/** 客户端可修正类业务错误（映射 400 + {@link ApiResult#fail400(ApiResultCustomCode)}）。 */
+	// ---------- 400 ----------
+
+	/** 客户端可修正类业务错误（400 + {@link ApiResult#fail400(ApiResultCustomCode)}）。 */
 	public static BizException badRequest(ApiResultCustomCode code) {
-		return new BizException(HttpStatus.BAD_REQUEST, code);
+		return new BizException(HttpStatus.BAD_REQUEST, code, null, null);
 	}
 
 	/**
-	 * 400：使用 {@code responseMessage} 作为对外 {@code msg}（如校验明细），业务码仍取自 {@code code}。
+	 * 400：使用 {@code responseMessage} 作为对外 {@code msg}。
 	 */
 	public static BizException badRequest(ApiResultCustomCode code, String responseMessage) {
 		return new BizException(HttpStatus.BAD_REQUEST, code, responseMessage, null);
 	}
 
-	/** 同上，保留原始异常链便于排查。 */
+	/** 400：保留原始异常链。 */
 	public static BizException badRequest(ApiResultCustomCode code, Throwable cause) {
-		return new BizException(HttpStatus.BAD_REQUEST, code, cause);
+		return new BizException(HttpStatus.BAD_REQUEST, code, null, cause);
 	}
 
-	/** 服务端或不可预期资源类业务失败（映射 500 + {@link ApiResult#fail500(ApiResultCustomCode)}）。 */
+	// ---------- 401 ----------
+
+	/**
+	 * 401：默认使用 {@link ApiResultHttp401#TOKEN_INVALID}（未登录或令牌无效）。
+	 */
+	public static BizException unauthorized() {
+		return unauthorized(ApiResultHttp401.TOKEN_INVALID);
+	}
+
+	/** 未授权（401 + {@link ApiResult#fail401(ApiResultHttp401)}）。 */
+	public static BizException unauthorized(ApiResultHttp401 spec) {
+		return new BizException(HttpStatus.UNAUTHORIZED, spec, null, null);
+	}
+
+	/** 401：覆盖对外 {@code msg}。 */
+	public static BizException unauthorized(ApiResultHttp401 spec, String responseMessage) {
+		return new BizException(HttpStatus.UNAUTHORIZED, spec, responseMessage, null);
+	}
+
+	/** 401：保留原始异常链。 */
+	public static BizException unauthorized(ApiResultHttp401 spec, Throwable cause) {
+		return new BizException(HttpStatus.UNAUTHORIZED, spec, null, cause);
+	}
+
+	// ---------- 403 ----------
+
+	/**
+	 * 403：默认使用 {@link ApiResultHttp403#NO_ACCESS}（没有访问权限）。
+	 */
+	public static BizException forbidden() {
+		return forbidden(ApiResultHttp403.NO_ACCESS);
+	}
+
+	/** 禁止访问（403 + {@link ApiResult#fail403(ApiResultHttp403)}）。 */
+	public static BizException forbidden(ApiResultHttp403 spec) {
+		return new BizException(HttpStatus.FORBIDDEN, spec, null, null);
+	}
+
+	/** 403：覆盖对外 {@code msg}。 */
+	public static BizException forbidden(ApiResultHttp403 spec, String responseMessage) {
+		return new BizException(HttpStatus.FORBIDDEN, spec, responseMessage, null);
+	}
+
+	/** 403：保留原始异常链。 */
+	public static BizException forbidden(ApiResultHttp403 spec, Throwable cause) {
+		return new BizException(HttpStatus.FORBIDDEN, spec, null, cause);
+	}
+
+	// ---------- 500 ----------
+
+	/** 服务端类业务失败（500 + {@link ApiResult#fail500(ApiResultCustomCode)}）。 */
 	public static BizException serverError(ApiResultCustomCode code) {
-		return new BizException(HttpStatus.INTERNAL_SERVER_ERROR, code);
+		return new BizException(HttpStatus.INTERNAL_SERVER_ERROR, code, null, null);
 	}
 
-	/** 同上，保留原始异常链。 */
+	/** 500：保留原始异常链。 */
 	public static BizException serverError(ApiResultCustomCode code, Throwable cause) {
-		return new BizException(HttpStatus.INTERNAL_SERVER_ERROR, code, cause);
+		return new BizException(HttpStatus.INTERNAL_SERVER_ERROR, code, null, cause);
 	}
 }
-

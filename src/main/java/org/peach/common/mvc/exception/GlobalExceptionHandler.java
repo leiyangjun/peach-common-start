@@ -1,5 +1,6 @@
 package org.peach.common.mvc.exception;
 
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -7,7 +8,9 @@ import org.peach.common.mybatis.exception.PersistenceException;
 import org.peach.common.mvc.result.ApiResult;
 import org.peach.common.mvc.result.code.ApiResultCustomCode;
 import org.peach.common.mvc.result.code.ApiResultHttp400;
+import org.peach.common.mvc.result.code.ApiResultCodeSpec;
 import org.peach.common.mvc.result.code.ApiResultHttp401;
+import org.peach.common.mvc.result.code.ApiResultHttp403;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -62,25 +65,44 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BizException.class)
 	public ResponseEntity<ApiResult<Void>> handleBizException(BizException ex, HttpServletRequest request) {
 		HttpStatus status = ex.getHttpStatus();
-		ApiResultCustomCode code = ex.getCustomCode();
+		int bizHint = resolveBizHintForLog(ex);
 		if (status.is4xxClientError()) {
 			log.warn("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
-					status.value(), code.code(), ex.getMessage());
+					status.value(), bizHint, ex.getMessage());
 		} else if (ex.getCause() != null) {
 			log.error("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
-					status.value(), code.code(), ex.getMessage(), ex.getCause());
+					status.value(), bizHint, ex.getMessage(), ex.getCause());
 		} else {
 			log.error("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
-					status.value(), code.code(), ex.getMessage());
+					status.value(), bizHint, ex.getMessage());
 		}
 		ApiResult<Void> body;
 		if (status == HttpStatus.BAD_REQUEST) {
+			ApiResultCustomCode code = Objects.requireNonNull(ex.getCustomCode(), "customCode");
 			body = StringUtils.isNotBlank(ex.getResponseMessage()) ? ApiResult.fail400(code, ex.getResponseMessage())
 					: ApiResult.fail400(code);
+		} else if (status == HttpStatus.UNAUTHORIZED) {
+			ApiResultHttp401 spec = (ApiResultHttp401) Objects.requireNonNull(ex.getHttpCodeSpec(), "httpCodeSpec");
+			body = StringUtils.isNotBlank(ex.getResponseMessage()) ? ApiResult.fail401(spec, ex.getResponseMessage())
+					: ApiResult.fail401(spec);
+		} else if (status == HttpStatus.FORBIDDEN) {
+			ApiResultHttp403 spec = (ApiResultHttp403) Objects.requireNonNull(ex.getHttpCodeSpec(), "httpCodeSpec");
+			body = StringUtils.isNotBlank(ex.getResponseMessage()) ? ApiResult.fail403(spec, ex.getResponseMessage())
+					: ApiResult.fail403(spec);
 		} else {
+			ApiResultCustomCode code = Objects.requireNonNull(ex.getCustomCode(), "customCode");
 			body = ApiResult.fail500(code);
 		}
 		return ResponseEntity.status(status).body(body);
+	}
+
+	private static int resolveBizHintForLog(BizException ex) {
+		ApiResultCustomCode custom = ex.getCustomCode();
+		if (custom != null) {
+			return custom.code();
+		}
+		ApiResultCodeSpec spec = ex.getHttpCodeSpec();
+		return spec != null ? spec.hintCode() : -1;
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)

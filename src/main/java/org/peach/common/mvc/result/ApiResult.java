@@ -172,6 +172,22 @@ public final class ApiResult<T> {
 	}
 
 	/**
+	 * 403：使用指定 {@link ApiResultHttp403} 语义。
+	 */
+	public static <T> ApiResult<T> fail403(ApiResultHttp403 spec) {
+		return fromSpec(Objects.requireNonNull(spec, "spec"), null, null);
+	}
+
+	/**
+	 * 403：使用指定语义，并覆盖对外 {@code msg}。
+	 */
+	public static <T> ApiResult<T> fail403(ApiResultHttp403 spec, String responseMessage) {
+		Objects.requireNonNull(spec, "spec");
+		String m = StringUtils.isNotBlank(responseMessage) ? responseMessage : spec.defaultMessage();
+		return new ApiResult<>(composeFullCode(spec), m, null);
+	}
+
+	/**
 	 * 500：系统内部错误，使用指定文案（通常为异常信息）。
 	 */
 	public static <T> ApiResult<T> fail500(String message) {
