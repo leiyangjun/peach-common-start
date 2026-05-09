@@ -1,6 +1,4 @@
-package org.peach.common.openapi;
-
-import org.peach.common.openapi.autoconfigure.PeachOpenApiConfiguration;
+package org.peach.common.mvc.openapi;
 
 import java.net.URI;
 import java.util.List;
@@ -22,6 +20,8 @@ import jakarta.servlet.http.HttpServletRequest;
  * 按访问 Swagger 的方式（经网关或直连）修正 OpenAPI 的 {@code servers}，避免「Try it out」调错地址；
  * 并在<strong>判定为经网关访问</strong>时，将 {@code info.contact.url} 设为指向网关根路径下门户页的<strong>绝对 URL</strong>
  * （Swagger UI 对相对路径联系人链接展示不稳定），无需在配置中写死网关地址。
+ *
+ * @author leiyangjun
  */
 public class SwaggerOpenApiCustomizer implements OpenApiCustomizer {
 

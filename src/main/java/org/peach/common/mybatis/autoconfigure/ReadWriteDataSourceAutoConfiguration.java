@@ -18,8 +18,11 @@ import org.springframework.context.annotation.Primary;
 import com.alibaba.druid.pool.DruidDataSource;
 
 /**
- * 创作日期：2026-04-26，作者：Codex
- * 读写分离数据源自动配置。启用后接管 dataSource 主 Bean，并基于事务只读标记在读库/写库间路由。
+ * 读写分离数据源自动配置：在开启 {@code spring.datasource.rw.enabled=true} 时注册写库/读库两个 Druid
+ * {@link DataSource}，并以 {@link ReadWriteRoutingDataSource} 作为 {@code @Primary} 的 {@code dataSource}，
+ * 根据当前事务是否只读在读写库间路由。
+ *
+ * @author leiyangjun
  */
 @AutoConfiguration(beforeName = "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration")
 @ConditionalOnClass({ DataSource.class, DruidDataSource.class })

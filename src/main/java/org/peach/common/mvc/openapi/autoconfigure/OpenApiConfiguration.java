@@ -1,7 +1,7 @@
-package org.peach.common.openapi.autoconfigure;
+package org.peach.common.mvc.openapi.autoconfigure;
 
-import org.peach.common.openapi.SwaggerOpenApiCustomizer;
-import org.peach.common.openapi.SwaggerPortalContact;
+import org.peach.common.mvc.openapi.SwaggerOpenApiCustomizer;
+import org.peach.common.mvc.openapi.SwaggerPortalContact;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -19,9 +19,11 @@ import io.swagger.v3.oas.models.info.Info;
  * 使用普通 {@link Configuration} 并由 {@link SwaggerAutoConfiguration} {@code @Import}，语义上等价于在业务工程中自建
  * {@code @Configuration} 类并声明 Bean（仍随 starter 生效，无需组件扫描到本类）。
  * </p>
+ *
+ * @author leiyangjun
  */
 @Configuration(proxyBeanMethods = false)
-public class PeachOpenApiConfiguration {
+public class OpenApiConfiguration {
 
 	private static final String DEFAULT_API_VERSION = "1.0.0";
 

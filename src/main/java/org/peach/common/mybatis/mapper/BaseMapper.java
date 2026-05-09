@@ -15,7 +15,7 @@ import org.peach.common.mybatis.model.vo.SortVO;
 
 /**
  * 通用 Mapper 基接口：在单表实体上封装增删改查、批量与唯一性校验等操作，具体 SQL 由
- * {@link org.peach.common.mybatis.mapper.BaseSqlProvider} 按注解与入参动态生成。
+ * {@link InsertSqlProvider}、{@link DeleteSqlProvider}、{@link UpdateSqlProvider}、{@link SelectSqlProvider} 按注解与入参动态生成。
  * <p>
  * 精确列表查询为「非 null 字段等值匹配」，不包含模糊与 {@link CommonQueryVO} 区间；
  * 模糊与区间请使用 {@link #likeSelectBase}。列表相关方法排序由 {@link SortVO} 传入（可 {@code null}）。
@@ -37,7 +37,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param entity 表对应实体
 	 * @return 受影响行数
 	 */
-	@InsertProvider(type = BaseSqlProvider.class, method = "insertBaseSQL")
+	@InsertProvider(type = InsertSqlProvider.class, method = "insertBaseSQL")
 	Integer insertBase(T entity);
 
 	/**
@@ -50,7 +50,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param entity 表对应实体
 	 * @return 受影响行数
 	 */
-	@InsertProvider(type = BaseSqlProvider.class, method = "insertBaseAllSQL")
+	@InsertProvider(type = InsertSqlProvider.class, method = "insertBaseAllSQL")
 	Integer insertBaseAll(T entity);
 
 	/**
@@ -59,7 +59,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param entity 条件实体，不需要参与匹配的字段请置为 {@code null}
 	 * @return 受影响行数
 	 */
-	@DeleteProvider(type = BaseSqlProvider.class, method = "deleteBaseSQL")
+	@DeleteProvider(type = DeleteSqlProvider.class, method = "deleteBaseSQL")
 	Integer deleteBase(T entity);
 
 	/**
@@ -69,7 +69,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param voClass 实体类型，须能解析出 {@link org.peach.common.mybatis.annotation.ID} 对应列
 	 * @return 受影响行数
 	 */
-	@DeleteProvider(type = BaseSqlProvider.class, method = "deleteBaseByKeySQL")
+	@DeleteProvider(type = DeleteSqlProvider.class, method = "deleteBaseByKeySQL")
 	<U> Integer deleteBaseByKey(@Param("key") Serializable key, @Param("voClass") Class<?> voClass);
 
 	/**
@@ -82,7 +82,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param entity 含主键及待更新字段的实体
 	 * @return 受影响行数
 	 */
-	@UpdateProvider(type = BaseSqlProvider.class, method = "updateBaseSQL")
+	@UpdateProvider(type = UpdateSqlProvider.class, method = "updateBaseSQL")
 	Integer updateBase(T entity);
 
 	/**
@@ -95,7 +95,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param entity 含主键及待更新字段的实体
 	 * @return 受影响行数
 	 */
-	@UpdateProvider(type = BaseSqlProvider.class, method = "updateBaseAllSQL")
+	@UpdateProvider(type = UpdateSqlProvider.class, method = "updateBaseAllSQL")
 	Integer updateBaseAll(T entity);
 
 	/**
@@ -108,7 +108,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param sort   排序（可为 {@code null}）
 	 * @return 结果列表
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "selectBaseSQL")
+	@SelectProvider(type = SelectSqlProvider.class, method = "selectBaseSQL")
 	List<T> selectBase(@Param("entity") T entity, @Param("sort") SortVO sort);
 
 	/**
@@ -120,7 +120,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param entity 查询条件实体（等值条件）
 	 * @return 单条记录，可能为 {@code null}
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "selectBaseOneSQL")
+	@SelectProvider(type = SelectSqlProvider.class, method = "selectBaseOneSQL")
 	T selectBaseOne(T entity);
 
 	/**
@@ -130,7 +130,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param sort   排序（可为 {@code null}）
 	 * @return 结果列表
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "selectBaseAll")
+	@SelectProvider(type = SelectSqlProvider.class, method = "selectBaseAll")
 	List<T> selectBaseAll(@Param("entity") T entity, @Param("sort") SortVO sort);
 
 	/**
@@ -143,7 +143,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param bigPage 游标分页参数（lastId/pageSize）
 	 * @return 结果列表
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "bigPageBaseSQL")
+	@SelectProvider(type = SelectSqlProvider.class, method = "bigPageBaseSQL")
 	List<T> bigPageBase(@Param("entity") T entity, @Param("bigPage") BigPageVO bigPage);
 
 	/**
@@ -152,7 +152,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param list 待插入实体列表
 	 * @return 受影响行数
 	 */
-	@InsertProvider(type = BaseSqlProvider.class, method = "batchInsertBaseSQL")
+	@InsertProvider(type = InsertSqlProvider.class, method = "batchInsertBaseSQL")
 	Integer batchInsertBase(List<T> list);
 
 	/**
@@ -161,7 +161,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param list 含主键的实体列表
 	 * @return 受影响行数
 	 */
-	@DeleteProvider(type = BaseSqlProvider.class, method = "batchDeleteBaseSQL")
+	@DeleteProvider(type = DeleteSqlProvider.class, method = "batchDeleteBaseSQL")
 	Integer batchDeleteBase(List<T> list);
 
 	/**
@@ -170,72 +170,62 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param entity 待校验实体
 	 * @return 重复时大于 0，否则为 0
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "checkBaseSQL")
+	@SelectProvider(type = SelectSqlProvider.class, method = "checkBaseSQL")
 	Integer checkBase(T entity);
 
 	/**
-	 * 仅针对标有 {@link org.peach.common.mybatis.annotation.Unique} 的字段做组合唯一校验，推荐使用。
+	 * 按唯一键列校验是否存在其它行占用同一值：{@code COUNT(1)}，语义与 {@link #selectUnique} 一致（仅单列 {@code @Unique}）。
+	 * <p>
+	 * {@code excludeKey}：更新场景传入当前行主键以排除自身；新增场景传 {@code null}。
+	 * </p>
 	 *
-	 * @param entity 待校验实体
+	 * @param uniqueValue 唯一键列条件值（非 {@code null}）
+	 * @param voClass       实体类型
+	 * @param excludeKey    排除的主键值，可 {@code null}
 	 * @return 重复时大于 0，否则为 0
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "checkUniqueSQL")
-	Integer checkUnique(T entity);
+	@SelectProvider(type = SelectSqlProvider.class, method = "checkUniqueSQL")
+	Integer checkUnique(@Param("uniqueValue") Object uniqueValue, @Param("voClass") Class<?> voClass,
+			@Param("excludeKey") Serializable excludeKey);
 
 	/**
 	 * 同 {@link #checkUnique}，返回是否存在重复。
 	 *
-	 * @param entity 待校验实体
+	 * @param uniqueValue 语义同 {@link #checkUnique}
+	 * @param voClass     实体类型
+	 * @param excludeKey  语义同 {@link #checkUnique}
 	 * @return 存在重复为 {@code true}
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "checkExistSQL")
-	Boolean checkExist(T entity);
+	@SelectProvider(type = SelectSqlProvider.class, method = "checkExistSQL")
+	Boolean checkExist(@Param("uniqueValue") Object uniqueValue, @Param("voClass") Class<?> voClass,
+			@Param("excludeKey") Serializable excludeKey);
 
 	/**
-	 * 按 {@link org.peach.common.mybatis.annotation.Unique} 列等值查询一条（标准列策略，{@code LIMIT 1}）。
+	 * 按 {@link org.peach.common.mybatis.annotation.Unique} 所在<strong>单列</strong>等值查询一条（标准列策略，{@code LIMIT 1}）。
 	 * <p>
-	 * {@code voClass} 解析表名、列与哪些字段带 {@code @Unique}；{@code entity} 仅提供条件值，其中<strong>非
-	 * {@code null}</strong>的 {@code @Unique} 属性才会进入 WHERE（例如用户表只设 {@code userName=admin} 即可查
-	 * admin）。<strong>不使用主键、不排除当前行</strong>，与 {@link #checkExist} 的语义不同。
+	 * {@code voClass} 须<strong>恰好一个</strong>{@code @Unique} 字段（多字段联合唯一不支持）；{@code uniqueValue} 为该列条件值，
+	 * 禁止传入实体/DTO，生成 SQL 形如 {@code SELECT ... FROM t WHERE unique_col = #{uniqueValue}}。
 	 * </p>
 	 * <p>
 	 * 不追加逻辑删除条件，可能命中已逻辑删除行；若只要有效数据请用 {@link #selectUniqueValid}。
 	 * </p>
 	 *
-	 * @param entity  条件对象（如仅填充唯一键相关字段）
-	 * @param voClass 实体类型，须含至少一个 {@code @Unique} 字段定义
+	 * @param uniqueValue 唯一键对应类型的单个值（非 {@code null}）
+	 * @param voClass       实体类型（解析表名、列与唯一键列名）
 	 * @return 命中首条或 {@code null}
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "selectUniqueSQL")
-	T selectUnique(@Param("entity") Object entity, @Param("voClass") Class<?> voClass);
+	@SelectProvider(type = SelectSqlProvider.class, method = "selectUniqueSQL")
+	T selectUnique(@Param("uniqueValue") Object uniqueValue, @Param("voClass") Class<?> voClass);
 
 	/**
 	 * 在 {@link #selectUnique} 相同条件上，追加逻辑删除列为「有效」取值，仅查未删除数据。
 	 *
-	 * @param entity  条件对象，语义同 {@link #selectUnique}
-	 * @param voClass 实体类型
+	 * @param uniqueValue 语义同 {@link #selectUnique}
+	 * @param voClass     实体类型
 	 * @return 命中首条或 {@code null}
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "selectUniqueValidSQL")
-	T selectUniqueValid(@Param("entity") Object entity, @Param("voClass") Class<?> voClass);
-
-	/**
-	 * 对多个 {@link org.peach.common.mybatis.annotation.Unique} 字段做「或」语义下的重复计数（以 Provider 生成 SQL 为准）。
-	 *
-	 * @param entity 待校验实体
-	 * @return 重复时大于 0，否则为 0
-	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "checkMultOrUniqueSQL")
-	Integer checkMultOrUnique(T entity);
-
-	/**
-	 * 同 {@link #checkMultOrUnique}，返回是否存在重复。
-	 *
-	 * @param entity 待校验实体
-	 * @return 存在重复为 {@code true}
-	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "checkMultOrExistSQL")
-	Boolean checkMultOrExist(T entity);
+	@SelectProvider(type = SelectSqlProvider.class, method = "selectUniqueValidSQL")
+	T selectUniqueValid(@Param("uniqueValue") Object uniqueValue, @Param("voClass") Class<?> voClass);
 
 	/**
 	 * 支持精确匹配与 {@link org.peach.common.mybatis.annotation.SearchValue} 模糊条件；可与 {@link org.peach.common.mybatis.annotation.Range} 组合。
@@ -245,7 +235,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param sort   排序（可为 {@code null}）
 	 * @return 结果列表
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "likeSelectBaseSQL")
+	@SelectProvider(type = SelectSqlProvider.class, method = "likeSelectBaseSQL")
 	List<T> likeSelectBase(@Param("entity") T entity, @Param("query") CommonQueryVO query, @Param("sort") SortVO sort);
 
 	/**
@@ -255,7 +245,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param voClass 实体类型
 	 * @return 实体或 {@code null}
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "selectBaseByKeySQL")
+	@SelectProvider(type = SelectSqlProvider.class, method = "selectBaseByKeySQL")
 	<U> T selectBaseByKey(@Param("key") Serializable key, @Param("voClass") Class<?> voClass);
 
 	/**
@@ -265,7 +255,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param voClass 实体类型
 	 * @return 结果列表
 	 */
-	@SelectProvider(type = BaseSqlProvider.class, method = "selectBaseByKeysSQL")
+	@SelectProvider(type = SelectSqlProvider.class, method = "selectBaseByKeysSQL")
 	<U> List<T> selectBaseByKeys(@Param("list") List<? extends Serializable> list,
 			@Param("voClass") Class<?> voClass, @Param("sort") SortVO sort);
 
@@ -276,7 +266,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param voClass 实体类型（须含主键映射）
 	 * @return 受影响行数
 	 */
-	@DeleteProvider(type = BaseSqlProvider.class, method = "batchDeleteBaseByKeysSQL")
+	@DeleteProvider(type = DeleteSqlProvider.class, method = "batchDeleteBaseByKeysSQL")
 	<U> Integer batchDeleteBaseByKeys(@Param("list") List<? extends Serializable> list,
 			@Param("voClass") Class<?> voClass);
 
@@ -287,7 +277,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param voClass 实体类型
 	 * @return 受影响行数
 	 */
-	@UpdateProvider(type = BaseSqlProvider.class, method = "logicDeleteByKeySQL")
+	@UpdateProvider(type = UpdateSqlProvider.class, method = "logicDeleteByKeySQL")
 	<U> Integer logicDeleteByKey(@Param("key") Serializable key, @Param("voClass") Class<?> voClass);
 
 	/**
@@ -297,7 +287,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param voClass 实体类型
 	 * @return 受影响行数
 	 */
-	@UpdateProvider(type = BaseSqlProvider.class, method = "logicRecoveryByKeySQL")
+	@UpdateProvider(type = UpdateSqlProvider.class, method = "logicRecoveryByKeySQL")
 	<U> Integer logicRecoveryByKey(@Param("key") Serializable key, @Param("voClass") Class<?> voClass);
 
 	/**
@@ -307,7 +297,7 @@ public interface BaseMapper<T extends Serializable> {
 	 * @param voClass 实体类型
 	 * @return 受影响行数
 	 */
-	@UpdateProvider(type = BaseSqlProvider.class, method = "logicBatchDeleteKeysSQL")
+	@UpdateProvider(type = UpdateSqlProvider.class, method = "logicBatchDeleteKeysSQL")
 	<U> Integer logicBatchDeleteKeys(@Param("list") List<? extends Serializable> list,
 			@Param("voClass") Class<?> voClass);
 }

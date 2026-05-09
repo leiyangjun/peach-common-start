@@ -196,11 +196,11 @@ public final class ApiResult<T> {
 	}
 
 	/**
-	 * 500：系统内部错误，优先使用 {@link Throwable#getMessage()}，为空则使用枚举默认文案。
+	 * 500：系统内部错误；对外 {@code msg} 固定为 {@link ApiResultHttp500#INTERNAL}，不透传异常信息；
+	 * 详情请在调用处记录日志。
 	 */
 	public static <T> ApiResult<T> fail500(Throwable throwable) {
-		String m = throwable == null ? null : throwable.getMessage();
-		return fail500(m);
+		return fromSpec(ApiResultHttp500.INTERNAL, ApiResultHttp500.INTERNAL.defaultMessage(), null);
 	}
 
 	/**

@@ -4,8 +4,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 创作日期：2026-04-26，作者：Codex
- * 读写分离数据源配置。关闭时沿用 spring.datasource；开启时由本配置构建写库/读库与路由数据源。
+ * 读写分离绑定配置（{@code spring.datasource.rw.*}）。未启用时业务仍使用默认单数据源；启用后由
+ * {@link ReadWriteDataSourceAutoConfiguration} 读取本属性创建写库、读库及路由 Bean，读库未填项时回退到写库。
+ *
+ * @author leiyangjun
  */
 @ConfigurationProperties(prefix = "spring.datasource.rw")
 public class ReadWriteDataSourceProperties {

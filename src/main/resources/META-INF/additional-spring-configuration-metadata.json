@@ -1,56 +1,27 @@
 {
   "properties": [
     {
-      "name": "peach.logging.enabled",
-      "type": "java.lang.Boolean",
-      "description": "是否启用 traceId 过滤器；关闭后仍使用 starter 内 logback-spring.xml（除非业务覆盖）。",
-      "defaultValue": true
-    },
-    {
       "name": "peach.logging.file.path",
       "type": "java.lang.String",
-      "description": "日志目录（相对路径基于 user.dir），其下生成 console.log、error.log 与 archive/。",
+      "description": "日志目录（相对路径基于 user.dir），由 logback-spring.xml 引用；其下生成 console.log、error.log 与 archive/。",
       "defaultValue": "logs"
     },
     {
       "name": "peach.logging.file.main-max-history",
       "type": "java.lang.Integer",
-      "description": "主日志 console.log 归档保留天数。",
+      "description": "主日志 console.log 归档保留天数（logback-spring.xml）。",
       "defaultValue": 30
     },
     {
       "name": "peach.logging.file.error-max-history",
       "type": "java.lang.Integer",
-      "description": "error.log 归档保留天数。",
+      "description": "error.log 归档保留天数（logback-spring.xml）。",
       "defaultValue": 90
-    },
-    {
-      "name": "peach.logging.dev.debug-packages",
-      "type": "java.util.List<java.lang.String>",
-      "description": "非 pro/produce/product/test 时默认 DEBUG 的包前缀；默认含 org.peach，可追加下游业务根包。"
-    },
-    {
-      "name": "peach.logging.trace.enabled",
-      "type": "java.lang.Boolean",
-      "description": "是否为 Web 请求注入 MDC traceId。",
-      "defaultValue": true
-    },
-    {
-      "name": "peach.logging.trace.header-name",
-      "type": "java.lang.String",
-      "description": "traceId 请求/响应头名称。",
-      "defaultValue": "X-Trace-Id"
-    },
-    {
-      "name": "peach.logging.trace.mdc-key",
-      "type": "java.lang.String",
-      "description": "MDC 键名，须与 logback 中 %X{...} 一致。",
-      "defaultValue": "traceId"
     },
     {
       "name": "logging.level.root",
       "type": "java.lang.String",
-      "description": "根日志级别；未配置时 pro/produce/product/test 默认 WARN，其余环境默认 INFO（均由 peachLoggingDefaultLevels 注入，可覆盖）。"
+      "description": "根日志级别；未配置时由 starter 内 logback-spring.xml 按 profile 默认（非 pro/produce/product/test 为 INFO，否则为 WARN），可显式覆盖。"
     }
   ]
 }

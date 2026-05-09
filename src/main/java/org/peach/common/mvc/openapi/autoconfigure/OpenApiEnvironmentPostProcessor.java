@@ -1,15 +1,18 @@
-package org.peach.common.openapi.autoconfigure;
+package org.peach.common.mvc.openapi.autoconfigure;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
 /**
- * 为 SpringDoc 提供 Starter 级默认（业务工程无需写 springdoc 段落）：
+ * 为 SpringDoc 提供 Starter 级默认（业务工程无需写 springdoc 段落）。
+ * 实现 {@link org.springframework.boot.EnvironmentPostProcessor}（Spring Boot 4+ 推荐包名；
+ * {@code org.springframework.boot.env.EnvironmentPostProcessor} 已弃用）。
+ * <p>
  * <ul>
  * <li>关闭 OpenAPI 文档缓存，避免先直连再经网关时沿用错误的 {@code servers}；</li>
  * <li>统一 Swagger UI 入口为 {@code /swagger-ui/index.html}，与网关文档门户链接一致（springdoc 自带默认是
@@ -18,8 +21,10 @@ import org.springframework.core.env.MapPropertySource;
  * <p>
  * 覆盖方式：在业务工程中显式配置对应属性即可。
  * </p>
+ *
+ * @author leiyangjun
  */
-public class PeachOpenApiEnvironmentPostProcessor implements EnvironmentPostProcessor {
+public class OpenApiEnvironmentPostProcessor implements EnvironmentPostProcessor {
 
 	private static final String SPRINGDOC_CACHE_DISABLED = "springdoc.cache.disabled";
 

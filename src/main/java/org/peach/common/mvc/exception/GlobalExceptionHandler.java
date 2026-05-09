@@ -4,13 +4,13 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-import org.peach.common.mybatis.exception.PersistenceException;
 import org.peach.common.mvc.result.ApiResult;
 import org.peach.common.mvc.result.code.ApiResultCustomCode;
-import org.peach.common.mvc.result.code.ApiResultHttp400;
 import org.peach.common.mvc.result.code.ApiResultCodeSpec;
 import org.peach.common.mvc.result.code.ApiResultHttp401;
 import org.peach.common.mvc.result.code.ApiResultHttp403;
+import org.peach.common.mvc.result.code.ApiResultHttp500;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -68,13 +68,11 @@ public class GlobalExceptionHandler {
 		int bizHint = resolveBizHintForLog(ex);
 		if (status.is4xxClientError()) {
 			log.warn("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
-					status.value(), bizHint, ex.getMessage());
-		} else if (ex.getCause() != null) {
+					status.value(), bizHint, ex.getMessage(), ex);
+		}
+		else {
 			log.error("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
-					status.value(), bizHint, ex.getMessage(), ex.getCause());
-		} else {
-			log.error("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
-					status.value(), bizHint, ex.getMessage());
+					status.value(), bizHint, ex.getMessage(), ex);
 		}
 		ApiResult<Void> body;
 		if (status == HttpStatus.BAD_REQUEST) {
@@ -148,16 +146,12 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResult.fail400(detail));
 	}
 
-	/**
-	 * BaseMapper / Provider 参数配置错误统一按 400 返回；日志在此集中打印，避免底层重复日志。
-	 */
-	@ExceptionHandler(PersistenceException.class)
-	public ResponseEntity<ApiResult<Void>> handlePersistenceException(PersistenceException ex, HttpServletRequest request) {
-		String detail = firstNonBlank(ex.getMessage(), "参数校验错误");
-		log.warn("[PersistenceException] {} {} detail={}", request.getMethod(), request.getRequestURI(), detail, ex);
-		String msg = ApiResultHttp400.UNIFIED_VALIDATE_ERROR.defaultMessage() + "：" + detail;
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-				.body(ApiResult.fail400(ApiResultHttp400.UNIFIED_VALIDATE_ERROR, msg));
+	/** 数据访问失败：对外统一系统内部错误，详情仅日志。 */
+	@ExceptionHandler(DataAccessException.class)
+	public ResponseEntity<ApiResult<Void>> handleDataAccess(DataAccessException ex, HttpServletRequest request) {
+		log.error("[DataAccessException] {} {}", request.getMethod(), request.getRequestURI(), ex);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(ApiResult.fail500(ApiResultHttp500.INTERNAL.defaultMessage()));
 	}
 
 	/**
@@ -204,9 +198,8 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(AuthenticationException.class)
 	public ResponseEntity<ApiResult<Void>> handleAuthenticationException(AuthenticationException ex,
 			HttpServletRequest request) {
-		log.warn("[AuthenticationException] {} {} msg={}", request.getMethod(), request.getRequestURI(), ex.getMessage());
-		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-				.body(ApiResult.fail401(ApiResultHttp401.TOKEN_INVALID, ex.getMessage()));
+		log.warn("[AuthenticationException] {} {} msg={}", request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResult.fail401(ApiResultHttp401.TOKEN_INVALID));
 	}
 
 	private static String firstNonBlank(String first, String second, String... fallbacks) {

@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.peach.common.mybatis.mapper.BaseMapper;
-import org.peach.common.mybatis.mapper.BaseSqlProvider;
+import org.peach.common.mybatis.mapper.CommonSqlProvider;
 import org.peach.common.mybatis.model.vo.PageVO;
 import org.peach.common.mybatis.model.vo.SortVO;
 import org.peach.common.utils.BeanUtil;
@@ -99,11 +99,11 @@ public abstract class BaseAbstractService<M extends BaseMapper<E>, E extends Ser
 	}
 
 	private Object readPrimaryKeyValue(E entity) {
-		String pkProp = BaseSqlProvider.getKey(entity, false);
+		String pkProp = CommonSqlProvider.getKey(entity, false);
 		if (StringUtils.isBlank(pkProp)) {
 			return null;
 		}
-		Field f = BaseSqlProvider.getDeclaredField(entity, pkProp);
+		Field f = CommonSqlProvider.getDeclaredField(entity, pkProp);
 		if (f == null) {
 			return null;
 		}

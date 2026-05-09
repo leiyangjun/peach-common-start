@@ -2,20 +2,29 @@
 <!--
   Peach 统一 Logback 配置（随 peach-common-start 进入下游工程 classpath）。
   下游无需再提供 logback.xml；若业务自建 logback-spring.xml / logback.xml 且位于主工程 resources 根，将覆盖本文件。
-  日志目录默认 ./logs（相对 user.dir），与 peach.logging.file.path 一致。
-  默认日志级别由 PeachLoggingEnvironmentPostProcessor 按 profile 注入：pro/produce/product/test → root WARN；
-  其余环境 → root INFO，且 peach.logging.dev.debug-packages 下包为 DEBUG（均可用 logging.level.* 覆盖）。
+
+  环境策略（均在本文件维护，避免 EnvironmentPostProcessor 注入 logging.level.*）：
+  - 默认（未激活下列生产类 profile）：root INFO；MyBatis、JDBC、org.peach 等为 DEBUG，便于本地与联调看 SQL/业务日志。
+  - pro / produce / product / test：root WARN；上述噪声包降为 WARN，与旧版 starter 行为一致。
+
+  仍可覆盖：业务 application.yml 中 logging.level.*（由 Spring Boot 绑定到 Logback）会作用于对应 logger。
+  日志目录与归档天数可选：peach.logging.file.*（由 springProperty 读环境，与 TraceIdFilter 中 MDC 键 traceId 无关）。
+  TraceId 请求头/MDC 键固定为 X-Trace-Id / traceId（与 org.peach.common.mvc.logs.web.TraceIdFilter 一致）。
 -->
 <configuration scan="true" scanPeriod="60 seconds">
 
 	<springProperty scope="context" name="PEACH_LOG_DIR" source="peach.logging.file.path" defaultValue="logs"/>
-	<springProperty scope="context" name="PEACH_TRACE_MDC" source="peach.logging.trace.mdc-key" defaultValue="traceId"/>
 	<springProperty scope="context" name="PEACH_MAIN_MAX_HISTORY" source="peach.logging.file.main-max-history" defaultValue="30"/>
 	<springProperty scope="context" name="PEACH_ERR_MAX_HISTORY" source="peach.logging.file.error-max-history" defaultValue="90"/>
-	<springProperty scope="context" name="ROOT_LEVEL" source="logging.level.root" defaultValue="INFO"/>
+
+	<!-- 默认 root 级别；生产类 profile 在同名 springProfile 内覆盖为 WARN（后声明的 property 优先生效） -->
+	<property name="ROOT_LEVEL" value="INFO"/>
+	<springProfile name="pro,produce,product,test">
+		<property name="ROOT_LEVEL" value="WARN"/>
+	</springProfile>
 
 	<property name="PEACH_LOG_PATTERN"
-			  value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - [%X{${PEACH_TRACE_MDC}}] %msg%n"/>
+			  value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - [%X{traceId}] %msg%n"/>
 
 	<contextName>peach</contextName>
 
@@ -26,7 +35,6 @@
 		</encoder>
 	</appender>
 
-	<!-- 全量级别镜像（与控制台策略一致），按天滚动，历史 gzip -->
 	<appender name="CONSOLE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<file>${PEACH_LOG_DIR}/console.log</file>
 		<encoder>
@@ -55,6 +63,19 @@
 			<cleanHistoryOnStart>false</cleanHistoryOnStart>
 		</rollingPolicy>
 	</appender>
+
+	<!-- 非生产类环境：框架与平台包 DEBUG（下游业务根包可在此追加 <logger name="com.example" level="DEBUG"/>） -->
+	<logger name="org.apache.ibatis" level="DEBUG"/>
+	<logger name="org.mybatis" level="DEBUG"/>
+	<logger name="java.sql" level="DEBUG"/>
+	<logger name="org.peach" level="DEBUG"/>
+
+	<springProfile name="pro,produce,product,test">
+		<logger name="org.apache.ibatis" level="WARN"/>
+		<logger name="org.mybatis" level="WARN"/>
+		<logger name="java.sql" level="WARN"/>
+		<logger name="org.peach" level="WARN"/>
+	</springProfile>
 
 	<root level="${ROOT_LEVEL}">
 		<appender-ref ref="CONSOLE"/>

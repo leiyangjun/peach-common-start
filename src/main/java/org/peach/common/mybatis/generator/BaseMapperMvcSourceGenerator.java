@@ -16,8 +16,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.peach.common.mybatis.generator.BaseMapperGeneratorRequest.TableSpec;
 
 /**
- * 在 MBG 已落盘 Entity/Mapper 后，用纯 Java 字符串生成 VO、Service 接口、ServiceImpl、Controller。
- * 从实体源文件中解析非 static 的 {@code private} 字段；import 自实体中复制并过滤与持久化/Mapper 相关项。
+ * 在 MyBatis Generator 已生成 Entity/Mapper 源码后，按约定包路径与表规格批量写出 VO、Service 接口、ServiceImpl、
+ * Controller 等 MVC 层骨架；字段自实体 Java 源解析，import 做简单过滤。由 {@link BaseMapperGeneratorUtil} 调用。
+ *
+ * @author leiyangjun
  */
 final class BaseMapperMvcSourceGenerator {
 

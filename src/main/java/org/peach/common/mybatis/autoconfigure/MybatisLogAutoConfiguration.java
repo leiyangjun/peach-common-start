@@ -14,7 +14,7 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
-import org.peach.common.mybatis.support.DevSqlStatementLogInterceptor;
+import org.peach.common.mybatis.interceptor.MybatisLogInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -28,17 +28,17 @@ import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
 /**
- * MyBatis 基础设施自动配置：在存在 {@link DataSource} 时补齐
- * {@link SqlSessionFactory}/{@link SqlSessionTemplate}，并按业务启动包自动扫描
- * {@link Mapper} 标注接口，减少下游显式配置负担。
+ * MyBatis 基础设施与 SQL 日志相关自动配置：在存在 {@link DataSource} 时补齐
+ * {@link SqlSessionFactory}/{@link SqlSessionTemplate}，按业务启动包自动扫描 {@link Mapper} 接口；
+ * 非严格生产环境注册 {@link MybatisLogInterceptor}，生产 profile 不注册该拦截器。
  *
  * @author leiyangjun
  */
 @AutoConfiguration(afterName = "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration")
 @ConditionalOnClass({ SqlSessionFactory.class, SqlSessionFactoryBean.class, MapperScannerConfigurer.class })
-public class BaseMybatisAutoConfiguration {
+public class MybatisLogAutoConfiguration {
 
-	private static final Logger log = LoggerFactory.getLogger(BaseMybatisAutoConfiguration.class);
+	private static final Logger log = LoggerFactory.getLogger(MybatisLogAutoConfiguration.class);
 
 	@Bean
 	@ConditionalOnMissingBean
@@ -53,13 +53,13 @@ public class BaseMybatisAutoConfiguration {
 		configuration.setLogImpl(logImpl);
 		factory.setConfiguration(configuration);
 		if (!isStrictProduction(environment)) {
-			factory.setPlugins(new DevSqlStatementLogInterceptor());
+			factory.setPlugins(new MybatisLogInterceptor());
 		}
 		SqlSessionFactory sqlSessionFactory = factory.getObject();
 		if (sqlSessionFactory == null) {
 			throw new IllegalStateException("SqlSessionFactory 创建失败：返回值为 null");
 		}
-		log.info("peach-common-start 自动配置已激活: BaseMybatisAutoConfiguration（SqlSessionFactory, logImpl={}）",
+		log.info("peach-common-start 自动配置已激活: MybatisLogAutoConfiguration（SqlSessionFactory, logImpl={}）",
 				logImpl.getSimpleName());
 		return sqlSessionFactory;
 	}
@@ -78,7 +78,7 @@ public class BaseMybatisAutoConfiguration {
 
 	private static boolean isStrictProduction(Environment environment) {
 		return Arrays.stream(environment.getActiveProfiles())
-				.anyMatch(BaseMybatisAutoConfiguration::isStrictProductionProfile);
+				.anyMatch(MybatisLogAutoConfiguration::isStrictProductionProfile);
 	}
 
 	/** 仅线上发布类 profile，不含 {@code test}（测试环境仍需便于看见 SQL）。 */
@@ -110,7 +110,7 @@ public class BaseMybatisAutoConfiguration {
 		}
 		configurer.setAnnotationClass(Mapper.class);
 		configurer.setSqlSessionFactoryBeanName("sqlSessionFactory");
-		log.info("peach-common-start 自动配置已激活: BaseMybatisAutoConfiguration（Mapper 扫描包={}）", packages);
+		log.info("peach-common-start 自动配置已激活: MybatisLogAutoConfiguration（Mapper 扫描包={}）", packages);
 		return configurer;
 	}
 }

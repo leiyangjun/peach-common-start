@@ -1,4 +1,4 @@
-package org.peach.common.mybatis.support;
+package org.peach.common.mybatis.interceptor;
 
 import java.util.Properties;
 
@@ -13,12 +13,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 非严格生产环境下注册的语句拦截器：在 prepare 阶段将 SQL 打到 SLF4J（logger 名 {@code org.peach.mybatis.devsql}），
- * 不依赖 MyBatis {@code logImpl} 与各级 {@code logging.level}，便于本地排查「只见 SqlSession 不见 SQL」的情况。
+ * MyBatis SQL 语句日志拦截器：在 {@link StatementHandler#prepare} 阶段将已绑定的 SQL 输出到
+ * SLF4J（logger {@code org.peach.mybatis.devsql}），便于与控制台 {@code StdOutImpl} 互补排查。
+ * 严格生产环境（pro / produce / product）下由 {@link org.peach.common.mybatis.autoconfigure.MybatisLogAutoConfiguration}
+ * 不注册本插件。
+ *
+ * @author leiyangjun
  */
 @Intercepts(@Signature(type = StatementHandler.class, method = "prepare", args = { java.sql.Connection.class,
 		Integer.class }))
-public class DevSqlStatementLogInterceptor implements Interceptor {
+public class MybatisLogInterceptor implements Interceptor {
 
 	private static final Logger SQL_LOG = LoggerFactory.getLogger("org.peach.mybatis.devsql");
 

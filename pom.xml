@@ -186,10 +186,16 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<!-- 可选：存在时由 PeachNacosDiscoveryMetadataAutoConfiguration 写入实例元数据 -->
+		<!-- 可选：存在时由 mvc.openapi.autoconfigure.NacosMetadataAutoConfiguration 写入实例元数据；@PeachCloud 依赖 discovery 在业务工程显式引入 -->
 		<dependency>
 			<groupId>com.alibaba.cloud</groupId>
 			<artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<!-- 可选：使用 Nacos 配置中心时在业务工程显式引入 -->
+		<dependency>
+			<groupId>com.alibaba.cloud</groupId>
+			<artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
 			<optional>true</optional>
 		</dependency>
 	</dependencies>

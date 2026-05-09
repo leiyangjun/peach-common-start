@@ -1,0 +1,3 @@
+# Spring Boot 4+：使用 org.springframework.boot.EnvironmentPostProcessor（原 org.springframework.boot.env 包已弃用）
+org.springframework.boot.EnvironmentPostProcessor=\
+org.peach.common.mvc.openapi.autoconfigure.OpenApiEnvironmentPostProcessor
