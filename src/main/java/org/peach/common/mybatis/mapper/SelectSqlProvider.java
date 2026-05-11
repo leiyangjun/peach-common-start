@@ -11,7 +11,6 @@ import org.peach.common.mybatis.code.CrudBizCode;
 import org.peach.common.mybatis.model.vo.BigPageVO;
 import org.peach.common.mybatis.model.vo.CommonQueryVO;
 import org.peach.common.mybatis.model.vo.SortVO;
-import org.peach.common.mybatis.support.BeanProperties;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -82,7 +81,7 @@ public class SelectSqlProvider {
 				baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{entity." + column + "}");
 			}
 		}
-		if (!BeanProperties.isEmptyKey(bigPage.getLastId())) {
+		if (!CommonSqlProvider.isEmptyKeyValue(bigPage.getLastId())) {
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + " > #{bigPage.lastId}");
 		}
 		baseSQL.ORDER_BY(CommonSqlProvider.rename(tableKey) + " asc");
@@ -205,7 +204,7 @@ public class SelectSqlProvider {
 		baseSQL.SELECT(countAsExistHint ? "COUNT(1)>0" : "COUNT(1)");
 		baseSQL.FROM(tableName);
 		baseSQL.WHERE(CommonSqlProvider.rename(uniqueField) + "=#{uniqueValue}");
-		if (!BeanProperties.isEmptyKey(excludeKey)) {
+		if (!CommonSqlProvider.isEmptyKeyValue(excludeKey)) {
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "<>#{excludeKey}");
 		}
 		return baseSQL;
@@ -269,7 +268,7 @@ public class SelectSqlProvider {
 		baseSQL.SELECT(xinhao.toUpperCase());
 		baseSQL.FROM(tableName);
 		for (String column : columns) {
-			if (CommonSqlProvider.prop(entity, column) != null && !BeanProperties.isEmptyKey(CommonSqlProvider.prop(entity, column))) {
+			if (CommonSqlProvider.prop(entity, column) != null && !CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(entity, column))) {
 				baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{entity." + column + "}");
 			}
 		}

@@ -66,11 +66,11 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResult<Void>> handleBizException(BizException ex, HttpServletRequest request) {
 		HttpStatus status = ex.getHttpStatus();
 		int bizHint = resolveBizHintForLog(ex);
-		if (status.is4xxClientError()) {
+		// 400/401/403：预期内客户端问题，仅 WARN + msg，不打印堆栈；500 才打印完整堆栈便于排查。
+		if (status == HttpStatus.BAD_REQUEST || status == HttpStatus.UNAUTHORIZED || status == HttpStatus.FORBIDDEN) {
 			log.warn("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
-					status.value(), bizHint, ex.getMessage(), ex);
-		}
-		else {
+					status.value(), bizHint, ex.getMessage());
+		} else {
 			log.error("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
 					status.value(), bizHint, ex.getMessage(), ex);
 		}
@@ -134,7 +134,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	public ResponseEntity<ApiResult<Void>> handleNotReadable(HttpMessageNotReadableException ex,
 			HttpServletRequest request) {
-		log.warn("[HttpMessageNotReadable] {} {}", request.getMethod(), request.getRequestURI(), ex);
+		log.warn("[HttpMessageNotReadable] {} {} msg={}", request.getMethod(), request.getRequestURI(), ex.getMessage());
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResult.fail400("请求体格式不正确或无法解析"));
 	}
 
@@ -198,7 +198,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(AuthenticationException.class)
 	public ResponseEntity<ApiResult<Void>> handleAuthenticationException(AuthenticationException ex,
 			HttpServletRequest request) {
-		log.warn("[AuthenticationException] {} {} msg={}", request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
+		log.warn("[AuthenticationException] {} {} msg={}", request.getMethod(), request.getRequestURI(), ex.getMessage());
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResult.fail401(ApiResultHttp401.TOKEN_INVALID));
 	}
 

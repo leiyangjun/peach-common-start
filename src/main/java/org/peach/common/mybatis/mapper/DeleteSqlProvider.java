@@ -7,7 +7,6 @@ import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.jdbc.SQL;
 import org.peach.common.mybatis.code.CrudBizCode;
-import org.peach.common.mybatis.support.BeanProperties;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -46,7 +45,7 @@ public class DeleteSqlProvider {
 				if (i < list.size() - 1) {
 					sb.append(",");
 				}
-				if (BeanProperties.isEmptyKey(CommonSqlProvider.prop(list.get(i), tableKey))) {
+				if (CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(list.get(i), tableKey))) {
 					isReturn = false;
 				}
 			}

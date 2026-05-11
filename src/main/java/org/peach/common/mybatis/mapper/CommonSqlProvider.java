@@ -25,9 +25,8 @@ import org.peach.common.mybatis.annotation.Unique;
 import org.peach.common.mybatis.code.CrudBizCode;
 import org.peach.common.mybatis.model.vo.CommonQueryVO;
 import org.peach.common.mybatis.model.vo.SortVO;
-import org.peach.common.mybatis.support.AuditBridge;
-import org.peach.common.mybatis.support.BeanProperties;
 import org.peach.common.utils.IdUtil;
+import org.peach.common.utils.LoginUserUtil;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -54,14 +53,50 @@ public final class CommonSqlProvider {
 	private static final Set<String> EXCLUDED_BASE_COLUMNS = Set.of("creator", "editor", "createTime", "editTime",
 			"creatorId", "editorId", "creatorName", "editorName");
 
-	/** 读取实体属性（实例），避免 JSON 往返序列化。 */
+	/** 新增时由登录用户填充的四类审计字段（属性名与实体一致）。 */
+	private static final Set<String> INSERT_AUDIT_COLUMNS = Set.of("creator", "editor", "createTime", "editTime");
+
+	/**
+	 * 读取 JavaBean 实例字段；{@code bean} 为 {@link Class} 或 {@code null} 时返回 {@code null}。
+	 * <p>
+	 * 使用反射直读，避免 JSON 序列化开销与类型歧义。
+	 * </p>
+	 *
+	 * @param bean 实体实例（勿传 {@link Class}）
+	 * @param name 属性名（驼峰）
+	 */
+	public static Object readField(Object bean, String name) {
+		if (bean == null || bean instanceof Class<?>) {
+			return null;
+		}
+		try {
+			return FieldUtils.readField(bean, name, true);
+		} catch (IllegalAccessException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * 是否视为「空」主键/SQL 条件值：{@code null}，或对 {@link CharSequence} 长度为 0。
+	 */
+	public static boolean isEmptyKeyValue(Object value) {
+		if (value == null) {
+			return true;
+		}
+		if (value instanceof CharSequence) {
+			return ((CharSequence) value).length() == 0;
+		}
+		return false;
+	}
+
+	/** 读取实体属性（实例），等同 {@link #readField}，供 Provider 内部简短调用。 */
 	static Object prop(Object bean, String name) {
-		return BeanProperties.read(bean, name);
+		return readField(bean, name);
 	}
 
 	/** 主键/字符串类条件是否已填写：非 null 且非空串。 */
 	static boolean hasNonEmptyValue(Object bean, String name) {
-		return !BeanProperties.isEmptyKey(prop(bean, name));
+		return !isEmptyKeyValue(prop(bean, name));
 	}
 
 	private static String lower(String value) {
@@ -86,7 +121,17 @@ public final class CommonSqlProvider {
 		return null;
 	}
 
-	static void appendEditorAuditSet(SQL sql, List<String> columns) {
+	/**
+	 * UPDATE 场景追加<strong>修改人、修改时间</strong>；{@link LoginUserUtil#getLoginUserId()} 为 {@code null} 时不追加。
+	 *
+	 * @param owner 实体实例或实体 {@link Class}（用于解析字段 JDBC 类型）
+	 */
+	static void appendEditorAuditSet(SQL sql, List<String> columns, Object owner) {
+		Long uid = LoginUserUtil.getLoginUserId();
+		if (uid == null) {
+			return;
+		}
+		Class<?> clazz = owner instanceof Class ? (Class<?>) owner : owner.getClass();
 		String editTimeColumn = findColumnIgnoreCase(columns, "editTime");
 		if (editTimeColumn != null) {
 			sql.SET(rename(editTimeColumn) + "=CURRENT_TIMESTAMP");
@@ -94,15 +139,61 @@ public final class CommonSqlProvider {
 		String editorIdColumn = findColumnIgnoreCase(columns, "editorId");
 		String editorColumn = findColumnIgnoreCase(columns, "editor");
 		String editorNameColumn = findColumnIgnoreCase(columns, "editorName");
-		if (editorIdColumn != null && StringUtils.isNotBlank(AuditBridge.getUserId())) {
-			sql.SET(rename(editorIdColumn) + "='" + AuditBridge.getUserId() + "'");
+		if (editorIdColumn != null) {
+			sql.SET(rename(editorIdColumn) + "=" + literalAuditUserValue(clazz, "editorId", uid));
 		}
-		if (editorColumn != null && StringUtils.isNotBlank(AuditBridge.getUserId())) {
-			sql.SET(rename(editorColumn) + "='" + AuditBridge.getUserId() + "'");
+		if (editorColumn != null) {
+			sql.SET(rename(editorColumn) + "=" + literalAuditUserValue(clazz, "editor", uid));
 		}
-		if (editorNameColumn != null && StringUtils.isNotBlank(AuditBridge.getUserName())) {
-			sql.SET(rename(editorNameColumn) + "='" + AuditBridge.getUserName() + "'");
+		String nickname = LoginUserUtil.getLoginUserNickname();
+		if (editorNameColumn != null && StringUtils.isNotBlank(nickname)) {
+			sql.SET(rename(editorNameColumn) + "='" + escapeSqlString(nickname) + "'");
 		}
+	}
+
+	static boolean isInsertAuditColumnName(String column) {
+		return INSERT_AUDIT_COLUMNS.contains(column);
+	}
+
+	/** UPDATE 时由 {@link #appendEditorAuditSet} 统一填充的修改侧审计列，避免与实体 SET 重复。 */
+	static boolean isEditorAuditColumn(String column) {
+		return "editor".equals(column) || "editTime".equals(column) || "editorId".equals(column)
+				|| "editorName".equals(column);
+	}
+
+	/**
+	 * 插入审计：{@code creator/editor} 用数值或字符串字面量；{@code createTime/editTime} 用 {@code CURRENT_TIMESTAMP}。
+	 */
+	static String literalAuditUserValue(Class<?> clazz, String property, Long uid) {
+		Field f = getDeclaredField(clazz, property);
+		if (f != null && CharSequence.class.isAssignableFrom(f.getType())) {
+			return "'" + escapeSqlString(String.valueOf(uid)) + "'";
+		}
+		return String.valueOf(uid);
+	}
+
+	private static String escapeSqlString(String raw) {
+		if (raw == null) {
+			return "";
+		}
+		return raw.replace("'", "''");
+	}
+
+	/**
+	 * INSERT 时若实体属性为空且存在登录用户，则生成审计列字面量（否则返回 {@code null} 表示走默认 #{prop} 或跳过）。
+	 */
+	static String insertAuditValueLiteral(Object obj, String column, Long uid) {
+		if (uid == null || prop(obj, column) != null) {
+			return null;
+		}
+		Class<?> clazz = obj.getClass();
+		if ("createTime".equals(column) || "editTime".equals(column)) {
+			return "CURRENT_TIMESTAMP";
+		}
+		if ("creator".equals(column) || "editor".equals(column)) {
+			return literalAuditUserValue(clazz, column, uid);
+		}
+		return null;
 	}
 
 	/**
@@ -588,8 +679,8 @@ public final class CommonSqlProvider {
 		// descending ascending
 		String orderBy = "";
 		List<String> columns = getTableColumns(entityClass);
-		Object sortNameObj = BeanProperties.read(entityClass, "sortName");
-		Object sortTypeObj = BeanProperties.read(entityClass, "sortType");
+		Object sortNameObj = readField(entityClass, "sortName");
+		Object sortTypeObj = readField(entityClass, "sortType");
 		String sortName = sortNameObj == null ? null : String.valueOf(sortNameObj);
 		String sortType = sortTypeObj == null ? null : String.valueOf(sortTypeObj);
 		if (!StringUtils.isEmpty(sortName) && !StringUtils.isEmpty(sortType)) {

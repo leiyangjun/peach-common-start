@@ -4,9 +4,11 @@ import java.io.Serializable;
 import java.text.MessageFormat;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.jdbc.SQL;
 import org.peach.common.mybatis.code.CrudBizCode;
+import org.peach.common.utils.LoginUserUtil;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -22,16 +24,25 @@ public class UpdateSqlProvider {
 		List<String> columns = CommonSqlProvider.getTableColumns(obj);
 		String tableKey = CommonSqlProvider.getKey(obj, false);
 		if (columns.contains(tableKey) && CommonSqlProvider.hasNonEmptyValue(obj, tableKey)) {
+			Long auditUid = LoginUserUtil.getLoginUserId();
 			SQL baseSQL = new SQL();
 			baseSQL.UPDATE(tableName);
 			for (String column : columns) {
+				if (auditUid != null && CommonSqlProvider.isEditorAuditColumn(column)) {
+					continue;
+				}
 				// getCreateColumns
 				// 如果字段为null,切创建人字段不包含更新&& !jsonObject.get(column).equals("")
 				if (CommonSqlProvider.prop(obj, column) != null && !CommonSqlProvider.isCreateAuditColumn(column)) {
 					baseSQL.SET(CommonSqlProvider.rename(column) + "=#{" + column + "}");
 				}
 			}
+			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, obj);
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{" + tableKey + "}");
+			String logicProp = CommonSqlProvider.getLogicDeleteField(obj, false);
+			if (StringUtils.isNotBlank(logicProp) && columns.contains(logicProp)) {
+				baseSQL.WHERE(CommonSqlProvider.rename(logicProp) + "=" + CommonSqlProvider.getLogicValidValue(obj));
+			}
 			return baseSQL.toString();
 		} else {
 			throw CrudBizCode.TABLE_KEY_INVALID.badRequest();
@@ -52,16 +63,25 @@ public class UpdateSqlProvider {
 		List<String> columns = CommonSqlProvider.getTableColumns(obj);
 		String tableKey = CommonSqlProvider.getKey(obj, false);
 		if (columns.contains(tableKey) && CommonSqlProvider.hasNonEmptyValue(obj, tableKey)) {
+			Long auditUid = LoginUserUtil.getLoginUserId();
 			SQL baseSQL = new SQL();
 			baseSQL.UPDATE(tableName);
 			for (String column : columns) {
+				if (auditUid != null && CommonSqlProvider.isEditorAuditColumn(column)) {
+					continue;
+				}
 				// getCreateColumns
 				// 如果字段为null,且创建人字段不包含更新
 				if (!column.equals(tableKey) && !CommonSqlProvider.isCreateAuditColumn(column)) {
 					baseSQL.SET(CommonSqlProvider.rename(column) + "=#{" + column + "}");
 				}
 			}
+			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, obj);
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{" + tableKey + "}");
+			String logicProp = CommonSqlProvider.getLogicDeleteField(obj, false);
+			if (StringUtils.isNotBlank(logicProp) && columns.contains(logicProp)) {
+				baseSQL.WHERE(CommonSqlProvider.rename(logicProp) + "=" + CommonSqlProvider.getLogicValidValue(obj));
+			}
 			return baseSQL.toString();
 		} else {
 			throw CrudBizCode.TABLE_KEY_INVALID.badRequest();
@@ -79,7 +99,7 @@ public class UpdateSqlProvider {
 			baseSQL.UPDATE(tableName);
 			baseSQL.SET(
 					CommonSqlProvider.rename(logicDeleteField) + "=" + CommonSqlProvider.getLogicInvalidValue(voClass));
-			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns);
+			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, voClass);
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{key}");
 			return baseSQL.toString();
 		} else {
@@ -97,7 +117,7 @@ public class UpdateSqlProvider {
 			baseSQL.UPDATE(tableName);
 			baseSQL.SET(
 					CommonSqlProvider.rename(logicDeleteField) + "=" + CommonSqlProvider.getLogicValidValue(voClass));
-			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns);
+			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, voClass);
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{key}");
 			return baseSQL.toString();
 		} else {
@@ -132,7 +152,7 @@ public class UpdateSqlProvider {
 			baseSQL.UPDATE(tableName);
 			baseSQL.SET(
 					CommonSqlProvider.rename(logicDeleteField) + "=" + CommonSqlProvider.getLogicInvalidValue(voClass));
-			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns);
+			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, voClass);
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + " IN (" + sb.toString() + ")");
 			return baseSQL.toString();
 		} else {

@@ -47,7 +47,7 @@ public class MybatisLogAutoConfiguration {
 		SqlSessionFactoryBean factory = new SqlSessionFactoryBean();
 		factory.setDataSource(dataSource);
 		Configuration configuration = new Configuration();
-		// PostgreSQL 等返回 subject_type 风格列名时，须映射到 subjectType；默认 false 会导致属性全为 null，误判业务字段
+		// PostgreSQL 等返回 user_type 风格列名时，须映射到 userType；默认 false 会导致属性全为 null，误判业务字段
 		configuration.setMapUnderscoreToCamelCase(true);
 		Class<? extends Log> logImpl = resolveMybatisLogImpl(environment);
 		configuration.setLogImpl(logImpl);

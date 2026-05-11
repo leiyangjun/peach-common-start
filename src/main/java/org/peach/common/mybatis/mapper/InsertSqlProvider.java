@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.jdbc.SQL;
 import org.peach.common.mybatis.annotation.ID;
-import org.peach.common.mybatis.support.BeanProperties;
+import org.peach.common.utils.LoginUserUtil;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -25,11 +25,18 @@ public class InsertSqlProvider {
 		String tableKey = CommonSqlProvider.getKey(obj, false);
 		String logicField = CommonSqlProvider.getLogicDeleteField(obj, false);
 		String tableKeyDefaultValue = CommonSqlProvider.getTableKeyValue(obj, false);
+		Long auditUid = LoginUserUtil.getLoginUserId();
 		SQL baseSQL = new SQL();
 		baseSQL.INSERT_INTO(tableName);
 		for (String column : columns) {
 			if (CommonSqlProvider.prop(obj, column) != null && !column.equals(tableKey) && !column.equals(logicField)) {// 如果字段为null,不计入此处操作
 				baseSQL.VALUES(CommonSqlProvider.rename(column), "#{" + column + "}");
+			} else if (auditUid != null && CommonSqlProvider.isInsertAuditColumnName(column) && !column.equals(tableKey)
+					&& !column.equals(logicField)) {
+				String lit = CommonSqlProvider.insertAuditValueLiteral(obj, column, auditUid);
+				if (lit != null) {
+					baseSQL.VALUES(CommonSqlProvider.rename(column), lit);
+				}
 			}
 			// VALUES(CommonSqlProvider.rename(tableKey),"REPLACE(UUID(),''-'','''')");
 			if (column.equals(tableKey) && CommonSqlProvider.hasNonEmptyValue(obj, tableKey)) {
@@ -39,7 +46,7 @@ public class InsertSqlProvider {
 			}
 			if (column.equals(logicField)) {
 				baseSQL.VALUES(CommonSqlProvider.rename(logicField),
-						BeanProperties.isEmptyKey(CommonSqlProvider.prop(obj, logicField))
+						CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(obj, logicField))
 								? CommonSqlProvider.getLogicValidValue(obj)
 								: "#{" + column + "}");
 			}
@@ -53,10 +60,19 @@ public class InsertSqlProvider {
 		String tableKey = CommonSqlProvider.getKey(obj, false);
 		String logicField = CommonSqlProvider.getLogicDeleteField(obj, false);
 		String tableKeyDefaultValue = CommonSqlProvider.getTableKeyValue(obj, false);
+		Long auditUid = LoginUserUtil.getLoginUserId();
 		SQL baseSQL = new SQL();
 		baseSQL.INSERT_INTO(tableName);
 		for (String column : columns) {
 			if (!column.equals(tableKey) && !column.equals(logicField)) {// 如果字段为null,不计入此处操作
+				if (auditUid != null && CommonSqlProvider.prop(obj, column) == null
+						&& CommonSqlProvider.isInsertAuditColumnName(column)) {
+					String lit = CommonSqlProvider.insertAuditValueLiteral(obj, column, auditUid);
+					if (lit != null) {
+						baseSQL.VALUES(CommonSqlProvider.rename(column), lit);
+						continue;
+					}
+				}
 				baseSQL.VALUES(CommonSqlProvider.rename(column), "#{" + column + "}");
 			}
 			if (column.equals(tableKey) && CommonSqlProvider.hasNonEmptyValue(obj, tableKey)) {
@@ -66,7 +82,7 @@ public class InsertSqlProvider {
 			}
 			if (column.equals(logicField)) {
 				baseSQL.VALUES(CommonSqlProvider.rename(logicField),
-						BeanProperties.isEmptyKey(CommonSqlProvider.prop(obj, logicField))
+						CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(obj, logicField))
 								? CommonSqlProvider.getLogicValidValue(obj)
 								: "#{" + column + "}");
 			}
@@ -88,7 +104,7 @@ public class InsertSqlProvider {
 			Field tableKeyField = !CollectionUtils.isEmpty(filedTemp) ? filedTemp.get(0) : null;
 			tableKeyField = tableKeyField == null ? CommonSqlProvider.getDeclaredField(t, tableKey) : tableKeyField;
 			ID tableKeyAn = tableKeyField == null ? null : tableKeyField.getAnnotation(ID.class);
-			if (BeanProperties.isEmptyKey(CommonSqlProvider.prop(t, tableKey)) && column.equals(tableKey)
+			if (CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(t, tableKey)) && column.equals(tableKey)
 					&& tableKeyAn != null && tableKeyAn.isSequence() && StringUtils.isEmpty(tableKeyAn.sequenceTag())) {
 				result = false;
 			}
@@ -101,7 +117,7 @@ public class InsertSqlProvider {
 		StringBuilder temp = new StringBuilder();
 		temp.append("(");
 		for (int j = 0; j < columns.size(); j++) {
-			if (BeanProperties.isEmptyKey(CommonSqlProvider.prop(t, logicKey)) && columns.contains(logicKey)
+			if (CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(t, logicKey)) && columns.contains(logicKey)
 					&& columns.get(j).equals(logicKey)) {
 				temp.append("\'\'" + CommonSqlProvider.getLogicValidValue(t) + "\'\'");
 			} else {
@@ -118,7 +134,7 @@ public class InsertSqlProvider {
 			// String str = "";
 
 			MessageFormat mf = new MessageFormat("");
-			if (BeanProperties.isEmptyKey(CommonSqlProvider.prop(t, tableKey)) && columns.contains(tableKey)) {
+			if (CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(t, tableKey)) && columns.contains(tableKey)) {
 				// str = StringUtils.replace(str, "#'{'list[{0}]." + tableKey + "}",
 				// "REPLACE(UUID(),''-'','''')");
 				mf.applyPattern(temp.toString().replace("#'{'list[{0,number,#}]." + tableKey + "}",

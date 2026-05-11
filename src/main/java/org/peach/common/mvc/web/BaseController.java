@@ -41,6 +41,10 @@ import jakarta.validation.Valid;
  * 对应 Service 实现类可继承
  * {@link org.peach.common.mybatis.service.BaseAbstractService} 复用默认能力。
  * </p>
+ * <p>
+ * 按主键详情路径 {@code GET .../{id}} 使用 {@link Long}，与库表 {@code bigint} 及 MyBatis 绑定一致；避免路径变量以字符串进入 JDBC 导致
+ * PostgreSQL 等严格类型比较失败。
+ * </p>
  *
  * @param <V> 对外 VO 类型
  * @param <S> Service 类型
@@ -57,7 +61,7 @@ public abstract class BaseController<V extends Serializable, S extends BaseAbstr
 	@Operation(summary = "根据主键查询详情", description = "按路径参数主键查询单条记录；无记录时由统一响应封装与异常处理决定返回内容。")
 	@GetMapping("/{id}")
 	public ApiResult<V> getById(
-			@Parameter(name = "id", description = "主键值", required = true, in = ParameterIn.PATH) @PathVariable String id) {
+			@Parameter(name = "id", description = "主键值（数值型，与表 bigint 一致）", required = true, in = ParameterIn.PATH) @PathVariable Long id) {
 		return ApiResult.ok(service.getById(id));
 	}
 
