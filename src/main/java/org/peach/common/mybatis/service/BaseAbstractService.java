@@ -59,14 +59,18 @@ public abstract class BaseAbstractService<M extends BaseMapper<E>, E extends Ser
 	}
 
 	@Transactional
-	public V save(V vo) {
+	public Serializable save(V vo) {
 		E entity = BeanUtil.copy(vo, entityClass);
 		if (!isPrimaryKeyPresent(entity)) {
 			mapper.insertBase(entity);
 		} else {
 			mapper.updateBase(entity);
 		}
-		return BeanUtil.copy(entity, voClass);
+		Object pk = readPrimaryKeyValue(entity);
+		if (pk != null && !(pk instanceof Serializable)) {
+			throw new IllegalStateException("主键类型须实现 java.io.Serializable，当前类型=" + pk.getClass().getName());
+		}
+		return (Serializable) pk;
 	}
 
 	/**

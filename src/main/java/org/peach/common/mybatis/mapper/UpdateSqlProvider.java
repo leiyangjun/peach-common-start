@@ -7,6 +7,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.jdbc.SQL;
+import org.peach.common.mvc.exception.BizException;
 import org.peach.common.mybatis.code.CrudBizCode;
 import org.peach.common.utils.LoginUserUtil;
 import org.springframework.util.CollectionUtils;
@@ -45,7 +46,7 @@ public class UpdateSqlProvider {
 			}
 			return baseSQL.toString();
 		} else {
-			throw CrudBizCode.TABLE_KEY_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);
 		}
 	}
 
@@ -84,7 +85,7 @@ public class UpdateSqlProvider {
 			}
 			return baseSQL.toString();
 		} else {
-			throw CrudBizCode.TABLE_KEY_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);
 		}
 	}
 
@@ -103,7 +104,7 @@ public class UpdateSqlProvider {
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{key}");
 			return baseSQL.toString();
 		} else {
-			throw CrudBizCode.LOGIC_DELETE_CONFIG_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.LOGIC_DELETE_CONFIG_INVALID);
 		}
 	}
 
@@ -121,7 +122,7 @@ public class UpdateSqlProvider {
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{key}");
 			return baseSQL.toString();
 		} else {
-			throw CrudBizCode.LOGIC_DELETE_CONFIG_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.LOGIC_DELETE_CONFIG_INVALID);
 		}
 	}
 
@@ -156,7 +157,7 @@ public class UpdateSqlProvider {
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + " IN (" + sb.toString() + ")");
 			return baseSQL.toString();
 		} else {
-			throw CrudBizCode.LOGIC_DELETE_CONFIG_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.LOGIC_DELETE_CONFIG_INVALID);
 		}
 	}
 

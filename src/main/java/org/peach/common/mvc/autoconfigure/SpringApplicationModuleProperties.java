@@ -14,7 +14,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SpringApplicationModuleProperties {
 
 	/**
-	 * 四位模块编码，全服务唯一前缀，参与 {@link org.peach.common.mvc.result.ApiResult} 的 {@code code} 第一段。
+	 * 四位模块编码，全服务唯一前缀；经 {@link ModuleCodeCache} 写入缓存后参与
+	 * {@link org.peach.common.mvc.result.ApiResult} 等 {@code code} 第一段拼接。
 	 */
 	private String moduleCode;
 

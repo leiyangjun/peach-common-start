@@ -7,6 +7,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.jdbc.SQL;
+import org.peach.common.mvc.exception.BizException;
 import org.peach.common.mybatis.code.CrudBizCode;
 import org.peach.common.mybatis.model.vo.BigPageVO;
 import org.peach.common.mybatis.model.vo.CommonQueryVO;
@@ -60,18 +61,18 @@ public class SelectSqlProvider {
 
 	public String bigPageBaseSQL(@Param("entity") Object entity, @Param("bigPage") BigPageVO bigPage) {
 		if (bigPage == null) {
-			throw CrudBizCode.CURSOR_PAGE_REQUIRED.badRequest();
+			throw BizException.validWarn(CrudBizCode.CURSOR_PAGE_REQUIRED);
 		}
 		Integer pageSize = bigPage.getPageSize();
 		if (pageSize == null || pageSize < 1) {
-			throw CrudBizCode.CURSOR_PAGE_SIZE_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.CURSOR_PAGE_SIZE_INVALID);
 		}
 		String tableName = CommonSqlProvider.getTableName(entity);
 		List<String> columns = CommonSqlProvider.getTableColumns(entity, true);
 		String xinhao = StringUtils.join(CommonSqlProvider.getUpperTableColumns(entity), ",");
 		String tableKey = CommonSqlProvider.getKey(entity, false);
 		if (StringUtils.isBlank(tableKey) || !columns.contains(tableKey)) {
-			throw CrudBizCode.TABLE_KEY_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);
 		}
 		SQL baseSQL = new SQL();
 		baseSQL.SELECT(xinhao.toUpperCase());
@@ -137,7 +138,7 @@ public class SelectSqlProvider {
 			}
 			return baseSQL.toString();
 		} else {
-			throw CrudBizCode.TABLE_KEY_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);
 		}
 	}
 
@@ -160,7 +161,7 @@ public class SelectSqlProvider {
 			}
 			return baseSQL.toString();
 		} else {
-			throw CrudBizCode.TABLE_KEY_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);
 		}
 
 	}
@@ -185,18 +186,18 @@ public class SelectSqlProvider {
 			boolean countAsExistHint) {
 		List<String> uniques = CommonSqlProvider.getUnique(voClass);
 		if (CollectionUtils.isEmpty(uniques)) {
-			throw CrudBizCode.UNIQUE_FIELD_REQUIRED_ON_VO.badRequest();
+			throw BizException.validWarn(CrudBizCode.UNIQUE_FIELD_REQUIRED_ON_VO);
 		}
 		if (uniques.size() > 1) {
-			throw CrudBizCode.UNIQUE_FIELD_MULTIPLE_ON_VO.badRequest();
+			throw BizException.validWarn(CrudBizCode.UNIQUE_FIELD_MULTIPLE_ON_VO);
 		}
 		if (uniqueValue == null) {
-			throw CrudBizCode.UNIQUE_QUERY_VALUE_REQUIRED.badRequest();
+			throw BizException.validWarn(CrudBizCode.UNIQUE_QUERY_VALUE_REQUIRED);
 		}
 		List<String> columns = CommonSqlProvider.getTableColumns(voClass);
 		String tableKey = CommonSqlProvider.getKey(voClass, false);
 		if (!columns.contains(tableKey)) {
-			throw CrudBizCode.TABLE_KEY_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);
 		}
 		String tableName = CommonSqlProvider.getTableName(voClass);
 		String uniqueField = uniques.get(0);
@@ -227,13 +228,13 @@ public class SelectSqlProvider {
 	private SQL buildSelectUniqueCoreSql(Object uniqueValue, Class<?> voClass) {
 		List<String> uniques = CommonSqlProvider.getUnique(voClass);
 		if (CollectionUtils.isEmpty(uniques)) {
-			throw CrudBizCode.UNIQUE_FIELD_REQUIRED_ON_VO.badRequest();
+			throw BizException.validWarn(CrudBizCode.UNIQUE_FIELD_REQUIRED_ON_VO);
 		}
 		if (uniques.size() > 1) {
-			throw CrudBizCode.UNIQUE_FIELD_MULTIPLE_ON_VO.badRequest();
+			throw BizException.validWarn(CrudBizCode.UNIQUE_FIELD_MULTIPLE_ON_VO);
 		}
 		if (uniqueValue == null) {
-			throw CrudBizCode.UNIQUE_QUERY_VALUE_REQUIRED.badRequest();
+			throw BizException.validWarn(CrudBizCode.UNIQUE_QUERY_VALUE_REQUIRED);
 		}
 		String tableName = CommonSqlProvider.getTableName(voClass);
 		String selectList = StringUtils.join(CommonSqlProvider.getUpperTableColumns(voClass), ",").toUpperCase();
@@ -297,7 +298,7 @@ public class SelectSqlProvider {
 			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{key}");
 			return baseSQL.toString();
 		} else {
-			throw CrudBizCode.TABLE_KEY_INVALID.badRequest();
+			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);
 		}
 	}
 }

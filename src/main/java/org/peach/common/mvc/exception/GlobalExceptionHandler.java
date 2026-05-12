@@ -1,31 +1,28 @@
 package org.peach.common.mvc.exception;
 
-import java.util.Objects;
-import java.util.stream.Collectors;
-
 import org.apache.commons.lang3.StringUtils;
-import org.peach.common.mvc.result.ApiResult;
-import org.peach.common.mvc.result.code.ApiResultCustomCode;
-import org.peach.common.mvc.result.code.ApiResultCodeSpec;
-import org.peach.common.mvc.result.code.ApiResultHttp401;
-import org.peach.common.mvc.result.code.ApiResultHttp403;
-import org.peach.common.mvc.result.code.ApiResultHttp500;
+import org.peach.common.mvc.result.code.Message400;
+import org.peach.common.mvc.result.code.Message401;
+import org.peach.common.mvc.result.code.Message403;
+import org.peach.common.mvc.result.code.Message404;
+import org.peach.common.mvc.result.code.Message500;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.accept.InvalidApiVersionException;
+import org.springframework.web.accept.MissingApiVersionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.accept.InvalidApiVersionException;
-import org.springframework.web.accept.MissingApiVersionException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import org.springframework.security.core.AuthenticationException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -33,28 +30,9 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 全局异常处理：将异常转为 {@link ApiResult}，HTTP 状态与业务语义对齐，并统一记录日志。
- * <p>
- * <b>API 版本（Spring Boot 4 / Spring Framework 7+）：</b>官方已提供一等支持，无需自研拦截器。<br>
- * 在 {@code application.yml} 中配置 {@code spring.mvc.apiversion}（例如请求头、查询参数、路径段、媒体类型参数等解析方式），
- * 控制器上使用 {@code @RequestMapping(version = "1.0")} 或其派生注解的 {@code version} 属性即可。<br>
- * 缺少版本或版本无效时框架抛出 {@link MissingApiVersionException}、{@link InvalidApiVersionException}，
- * 本类将其转为 {@link ApiResult#fail400(String)}，与项目统一返回体一致。
- * </p>
- * <p>
- * 配置示例（请求头携带版本，可按需改用 {@code use.path-segment} / {@code use.query-parameter} 等）：
- * </p>
- * 
- * <pre>
- * spring:
- *   mvc:
- *     apiversion:
- *       required: true
- *       default-version: "1.0"
- *       supported: ["1.0", "2.0"]
- *       use:
- *         header: API-Version
- * </pre>
+ * 全局异常处理：返回
+ * {@link org.springframework.http.ResponseEntity}{@code <ErrorResult>}，响应体由
+ * Jackson 序列化； 日志中打印 {@link ErrorResult#toString()} 仅为简要文本，与响应 JSON 无关联。
  *
  * @author leiyangjun
  */
@@ -63,144 +41,150 @@ import lombok.extern.slf4j.Slf4j;
 public class GlobalExceptionHandler {
 
 	@ExceptionHandler(BizException.class)
-	public ResponseEntity<ApiResult<Void>> handleBizException(BizException ex, HttpServletRequest request) {
+	public ResponseEntity<ErrorResult> handleBizException(BizException ex, HttpServletRequest request) {
 		HttpStatus status = ex.getHttpStatus();
-		int bizHint = resolveBizHintForLog(ex);
-		// 400/401/403：预期内客户端问题，仅 WARN + msg，不打印堆栈；500 才打印完整堆栈便于排查。
-		if (status == HttpStatus.BAD_REQUEST || status == HttpStatus.UNAUTHORIZED || status == HttpStatus.FORBIDDEN) {
-			log.warn("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
-					status.value(), bizHint, ex.getMessage());
-		} else {
-			log.error("[BizException] {} {} http={} bizHint={} msg={}", request.getMethod(), request.getRequestURI(),
-					status.value(), bizHint, ex.getMessage(), ex);
-		}
-		ApiResult<Void> body;
+		ErrorResult errorResult = ex.getErrorResult();
 		if (status == HttpStatus.BAD_REQUEST) {
-			ApiResultCustomCode code = Objects.requireNonNull(ex.getCustomCode(), "customCode");
-			body = StringUtils.isNotBlank(ex.getResponseMessage()) ? ApiResult.fail400(code, ex.getResponseMessage())
-					: ApiResult.fail400(code);
-		} else if (status == HttpStatus.UNAUTHORIZED) {
-			ApiResultHttp401 spec = (ApiResultHttp401) Objects.requireNonNull(ex.getHttpCodeSpec(), "httpCodeSpec");
-			body = StringUtils.isNotBlank(ex.getResponseMessage()) ? ApiResult.fail401(spec, ex.getResponseMessage())
-					: ApiResult.fail401(spec);
-		} else if (status == HttpStatus.FORBIDDEN) {
-			ApiResultHttp403 spec = (ApiResultHttp403) Objects.requireNonNull(ex.getHttpCodeSpec(), "httpCodeSpec");
-			body = StringUtils.isNotBlank(ex.getResponseMessage()) ? ApiResult.fail403(spec, ex.getResponseMessage())
-					: ApiResult.fail403(spec);
+			log.warn("[BizException] {} {} http={} error info={}", request.getMethod(), request.getRequestURI(),
+					status.value(), errorResult);
 		} else {
-			ApiResultCustomCode code = Objects.requireNonNull(ex.getCustomCode(), "customCode");
-			body = ApiResult.fail500(code);
+			log.error("[BizException] {} {} http={} error info={}", request.getMethod(), request.getRequestURI(),
+					status.value(), errorResult, ex);
 		}
-		return ResponseEntity.status(status).body(body);
-	}
-
-	private static int resolveBizHintForLog(BizException ex) {
-		ApiResultCustomCode custom = ex.getCustomCode();
-		if (custom != null) {
-			return custom.code();
-		}
-		ApiResultCodeSpec spec = ex.getHttpCodeSpec();
-		return spec != null ? spec.hintCode() : -1;
+		return ResponseEntity.status(status).body(errorResult);
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<ApiResult<Void>> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+	public ResponseEntity<ErrorResult> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
 			HttpServletRequest request) {
-		String msg = ex.getBindingResult().getFieldErrors().stream().map(FieldError::getDefaultMessage)
-				.collect(Collectors.joining("; "));
-		String detail = msg.isEmpty() ? "参数校验未通过" : msg;
-		log.warn("[MethodArgumentNotValid] {} {} detail={}", request.getMethod(), request.getRequestURI(), detail);
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResult.fail400(detail));
+		String detail = firstFieldErrorMessage(ex.getBindingResult());
+		ErrorResult errorResult = ErrorResult.validWarn(Message400.METHOD_ARG_NOT_VALID, detail);
+		log.warn("[MethodArgumentNotValid] {} {} detail={} error info={}", request.getMethod(), request.getRequestURI(),
+				detail, errorResult);
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResult);
 	}
 
 	@ExceptionHandler(BindException.class)
-	public ResponseEntity<ApiResult<Void>> handleBindException(BindException ex, HttpServletRequest request) {
-		String msg = ex.getBindingResult().getFieldErrors().stream().map(FieldError::getDefaultMessage)
-				.collect(Collectors.joining("; "));
-		String detail = msg.isEmpty() ? "参数绑定失败" : msg;
-		log.warn("[BindException] {} {} detail={}", request.getMethod(), request.getRequestURI(), detail);
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResult.fail400(detail));
+	public ResponseEntity<ErrorResult> handleBindException(BindException ex, HttpServletRequest request) {
+		String detail = firstFieldErrorMessage(ex.getBindingResult());
+		ErrorResult errorResult = ErrorResult.validWarn(Message400.BIND_FAILURE, detail);
+		log.warn("[BindException] {} {} detail={} error info={}", request.getMethod(), request.getRequestURI(), detail,
+				errorResult);
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResult);
 	}
 
 	@ExceptionHandler(ConstraintViolationException.class)
-	public ResponseEntity<ApiResult<Void>> handleConstraintViolation(ConstraintViolationException ex,
+	public ResponseEntity<ErrorResult> handleConstraintViolation(ConstraintViolationException ex,
 			HttpServletRequest request) {
-		String msg = ex.getConstraintViolations().stream().map(ConstraintViolation::getMessage)
-				.collect(Collectors.joining("; "));
-		log.warn("[ConstraintViolation] {} {} detail={}", request.getMethod(), request.getRequestURI(), msg);
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResult.fail400(msg));
+		String detail = firstConstraintLine(ex);
+		ErrorResult errorResult = ErrorResult.validWarn(Message400.CONSTRAINT_VIOLATION, detail);
+		log.warn("[ConstraintViolation] {} {} detail={} error info={}", request.getMethod(), request.getRequestURI(),
+				detail, errorResult);
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResult);
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
-	public ResponseEntity<ApiResult<Void>> handleNotReadable(HttpMessageNotReadableException ex,
+	public ResponseEntity<ErrorResult> handleNotReadable(HttpMessageNotReadableException ex,
 			HttpServletRequest request) {
-		log.warn("[HttpMessageNotReadable] {} {} msg={}", request.getMethod(), request.getRequestURI(), ex.getMessage());
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResult.fail400("请求体格式不正确或无法解析"));
+		ErrorResult errorResult = ErrorResult.validWarn(Message400.BODY_NOT_READABLE);
+		log.warn("[HttpMessageNotReadable] {} {} msg={} error info={}", request.getMethod(), request.getRequestURI(),
+				ex.getMessage(), errorResult);
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResult);
 	}
 
 	@ExceptionHandler(MissingServletRequestParameterException.class)
-	public ResponseEntity<ApiResult<Void>> handleMissingParam(MissingServletRequestParameterException ex,
+	public ResponseEntity<ErrorResult> handleMissingParam(MissingServletRequestParameterException ex,
 			HttpServletRequest request) {
-		String detail = "缺少必要参数: " + ex.getParameterName();
-		log.warn("[MissingParameter] {} {} {}", request.getMethod(), request.getRequestURI(), detail);
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResult.fail400(detail));
+		ErrorResult errorResult = ErrorResult.validWarn(Message400.MISSING_PARAMETER);
+		log.warn("[MissingParameter] {} {} name={} error info={}", request.getMethod(), request.getRequestURI(),
+				ex.getParameterName(), errorResult);
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResult);
 	}
 
-	/** 数据访问失败：对外统一系统内部错误，详情仅日志。 */
 	@ExceptionHandler(DataAccessException.class)
-	public ResponseEntity<ApiResult<Void>> handleDataAccess(DataAccessException ex, HttpServletRequest request) {
-		log.error("[DataAccessException] {} {}", request.getMethod(), request.getRequestURI(), ex);
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-				.body(ApiResult.fail500(ApiResultHttp500.INTERNAL.defaultMessage()));
+	public ResponseEntity<ErrorResult> handleDataAccess(DataAccessException ex, HttpServletRequest request) {
+		ErrorResult errorResult = ErrorResult.error(Message500.INTERNAL);
+		log.error("[DataAccessException] {} {} error info={}", request.getMethod(), request.getRequestURI(),
+				errorResult, ex);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResult);
 	}
 
-	/**
-	 * 已启用 {@code spring.mvc.apiversion} 且要求携带版本，但请求未解析到版本时由框架抛出。
-	 */
 	@ExceptionHandler(MissingApiVersionException.class)
-	public ResponseEntity<ApiResult<Void>> handleMissingApiVersion(MissingApiVersionException ex,
+	public ResponseEntity<ErrorResult> handleMissingApiVersion(MissingApiVersionException ex,
 			HttpServletRequest request) {
-		String detail = firstNonBlank(ex.getReason(), ex.getMessage(), "缺少 API 版本信息，请按约定传递版本（如请求头、路径、查询参数等）");
-		log.warn("[MissingApiVersion] {} {} detail={}", request.getMethod(), request.getRequestURI(), detail);
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResult.fail400(detail));
+		String detail = firstNonBlank(ex.getReason(), ex.getMessage(), Message400.MISSING_API_VERSION.msg());
+		ErrorResult errorResult = ErrorResult.validWarn(Message400.MISSING_API_VERSION, detail);
+		log.warn("[MissingApiVersion] {} {} detail={} error info={}", request.getMethod(), request.getRequestURI(),
+				detail, errorResult);
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResult);
 	}
 
-	/**
-	 * 请求携带的版本不在支持范围内或无法解析时由框架抛出。
-	 */
 	@ExceptionHandler(InvalidApiVersionException.class)
-	public ResponseEntity<ApiResult<Void>> handleInvalidApiVersion(InvalidApiVersionException ex,
+	public ResponseEntity<ErrorResult> handleInvalidApiVersion(InvalidApiVersionException ex,
 			HttpServletRequest request) {
-		String detail = firstNonBlank(ex.getReason(), ex.getMessage(), "API 版本无效或不受支持");
-		log.warn("[InvalidApiVersion] {} {} version={} detail={}", request.getMethod(), request.getRequestURI(),
-				ex.getVersion(), detail);
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResult.fail400(detail));
+		String detail = firstNonBlank(ex.getReason(), ex.getMessage(), Message400.INVALID_API_VERSION.msg());
+		ErrorResult errorResult = ErrorResult.validWarn(Message400.INVALID_API_VERSION, detail);
+		log.warn("[InvalidApiVersion] {} {} version={} detail={} error info={}", request.getMethod(),
+				request.getRequestURI(), ex.getVersion(), detail, errorResult);
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResult);
 	}
 
-	/**
-	 * 浏览器与探测器常访问不存在的静态资源（如 favicon、.well-known）。该类场景按 404 返回并降级为 debug 日志，避免污染错误日志。
-	 */
 	@ExceptionHandler(NoResourceFoundException.class)
-	public ResponseEntity<ApiResult<Void>> handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request) {
-		log.debug("[NoResourceFound] {} {} detail={}", request.getMethod(), request.getRequestURI(), ex.getMessage());
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResult.fail400("资源不存在"));
+	public ResponseEntity<ErrorResult> handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request) {
+		ErrorResult errorResult = ErrorResult.notFound(Message404.NOT_FOUND);
+		log.debug("[NoResourceFound] {} {} detail={} error info={}", request.getMethod(), request.getRequestURI(),
+				ex.getMessage(), errorResult);
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResult);
 	}
 
-	/**
-	 * 请求未匹配到任何 Controller Handler 时（开启 no-handler-found 异常化后）统一按 404 返回，并降级为 debug 日志。
-	 */
 	@ExceptionHandler(NoHandlerFoundException.class)
-	public ResponseEntity<ApiResult<Void>> handleNoHandlerFound(NoHandlerFoundException ex, HttpServletRequest request) {
-		log.debug("[NoHandlerFound] {} {} detail={}", request.getMethod(), request.getRequestURI(), ex.getMessage());
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResult.fail400("资源不存在"));
+	public ResponseEntity<ErrorResult> handleNoHandlerFound(NoHandlerFoundException ex, HttpServletRequest request) {
+		ErrorResult errorResult = ErrorResult.notFound(Message404.NOT_FOUND);
+		log.debug("[NoHandlerFound] {} {} detail={} error info={}", request.getMethod(), request.getRequestURI(),
+				ex.getMessage(), errorResult);
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResult);
 	}
 
 	@ExceptionHandler(AuthenticationException.class)
-	public ResponseEntity<ApiResult<Void>> handleAuthenticationException(AuthenticationException ex,
+	public ResponseEntity<ErrorResult> handleAuthenticationException(AuthenticationException ex,
 			HttpServletRequest request) {
-		log.warn("[AuthenticationException] {} {} msg={}", request.getMethod(), request.getRequestURI(), ex.getMessage());
-		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResult.fail401(ApiResultHttp401.TOKEN_INVALID));
+		ErrorResult errorResult = ErrorResult.unauthorized(Message401.TOKEN_INVALID);
+		log.warn("[AuthenticationException] {} {} msg={} error info={}", request.getMethod(), request.getRequestURI(),
+				ex.getMessage(), errorResult);
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResult);
 	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<ErrorResult> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+		ErrorResult errorResult = ErrorResult.forbidden(Message403.NO_ACCESS);
+		log.warn("[AccessDenied] {} {} msg={} error info={}", request.getMethod(), request.getRequestURI(),
+				ex.getMessage(), errorResult);
+		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResult);
+	}
+
+	private static String firstFieldErrorMessage(BindingResult br) {
+		if (br == null || !br.hasErrors()) {
+			return null;
+		}
+		FieldError fe = br.getFieldErrors().get(0);
+		return fe.getField() + ": " + fe.getDefaultMessage();
+	}
+
+	private static String firstConstraintLine(ConstraintViolationException ex) {
+		if (ex.getConstraintViolations() == null || ex.getConstraintViolations().isEmpty()) {
+			return null;
+		}
+		ConstraintViolation<?> v = ex.getConstraintViolations().iterator().next();
+		return v.getPropertyPath() + ": " + v.getMessage();
+	}
+
+//	/**
+//	 * 将首条说明格式进枚举模板；无明细时用占位避免裸 {@code %s}。
+//	 */
+//	private static String formatMessage400(Message400 code, String detail) {
+//		String d = StringUtils.isNotBlank(detail) ? detail : "—";
+//		return String.format(code.msg(), d);
+//	}
 
 	private static String firstNonBlank(String first, String second, String... fallbacks) {
 		if (StringUtils.isNotBlank(first)) {
@@ -220,9 +204,9 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(Exception.class)
-	public ResponseEntity<ApiResult<Void>> handleUnexpected(Exception ex, HttpServletRequest request) {
-		log.error("[未处理异常] {} {}", request.getMethod(), request.getRequestURI(), ex);
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResult.fail500(ex));
+	public ResponseEntity<ErrorResult> handleUnexpected(Exception ex, HttpServletRequest request) {
+		ErrorResult errorResult = ErrorResult.error(Message500.INTERNAL);
+		log.error("[未处理异常] {} {} error info={}", request.getMethod(), request.getRequestURI(), errorResult, ex);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResult);
 	}
 }
-

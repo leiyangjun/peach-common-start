@@ -20,7 +20,10 @@ public interface BaseInterfaceService<V extends Serializable> {
 
 	V getById(Serializable id);
 
-	V save(V vo);
+	/**
+	 * 新增或更新后返回<b>主键</b>（与表主键类型一致，常见为 {@link Long}）。
+	 */
+	Serializable save(V vo);
 
 	PageInfo<V> listPage(V condition, PageVO page, SortVO sort);
 }

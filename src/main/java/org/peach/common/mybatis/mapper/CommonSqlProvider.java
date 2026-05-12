@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.ibatis.jdbc.SQL;
+import org.peach.common.mvc.exception.BizException;
 import org.peach.common.mybatis.annotation.Exclude;
 import org.peach.common.mybatis.annotation.ID;
 import org.peach.common.mybatis.annotation.LogicDelete;
@@ -208,8 +209,8 @@ public final class CommonSqlProvider {
 		if (CollectionUtils.isEmpty(rangeFields)) {
 			return;
 		}
-		if (rangeFields.size() > 1) {
-			throw CrudBizCode.RANGE_FIELD_MULTIPLE.badRequestFormatted(rangeFields.size());
+		if (rangeFields.size() > 1) {//RANGE_FIELD_MULTIPLE
+			throw BizException.validWarn(CrudBizCode.RANGE_FIELD_MULTIPLE, String.valueOf(rangeFields.size()));
 		}
 		String column = rename(rangeFields.get(0).getName());
 		if (query.getStartValue() != null) {
@@ -287,7 +288,7 @@ public final class CommonSqlProvider {
 		String tableKes = "id";
 		List<String> fields = getFilterAnnotationName(entityClass, ID.class);
 		if (!CollectionUtils.isEmpty(fields) && fields.size() > 1) {
-			throw CrudBizCode.ENTITY_ANNOTATION_CONFLICT.badRequest();
+			throw BizException.validWarn(CrudBizCode.ENTITY_ANNOTATION_CONFLICT);
 		}
 		tableKes = !CollectionUtils.isEmpty(fields) ? fields.get(0) : tableKes;
 		tableKes = checkFieldExists(tableKes, entityClass) ? tableKes : "";
@@ -307,7 +308,7 @@ public final class CommonSqlProvider {
 		String tableKes = "valid";
 		List<String> fields = getFilterAnnotationName(entityClass, LogicDelete.class);
 		if (!CollectionUtils.isEmpty(fields) && fields.size() > 1) {
-			throw CrudBizCode.ENTITY_ANNOTATION_CONFLICT.badRequest();
+			throw BizException.validWarn(CrudBizCode.ENTITY_ANNOTATION_CONFLICT);
 		}
 		tableKes = !CollectionUtils.isEmpty(fields) ? fields.get(0) : tableKes;
 		tableKes = checkFieldExists(tableKes, entityClass) ? tableKes : "";
@@ -348,7 +349,7 @@ public final class CommonSqlProvider {
 	public static Field getLogicDeleteField(Object entityClass) {
 		List<Field> fields = getFilterAnnotation(entityClass, LogicDelete.class);
 		if (!CollectionUtils.isEmpty(fields) && fields.size() > 1) {
-			throw CrudBizCode.ENTITY_ANNOTATION_CONFLICT.badRequest();
+			throw BizException.validWarn(CrudBizCode.ENTITY_ANNOTATION_CONFLICT);
 		}
 		return !CollectionUtils.isEmpty(fields) ? fields.get(0) : null;
 	}
@@ -636,34 +637,34 @@ public final class CommonSqlProvider {
 	}
 
 	/**
-	 * 从 {@link SortVO} 读取排序；与 {@link #selectBaseSQL} 列策略一致时使用
-	 * {@code getTableColumns(entity, true)}。
+	 * 仅从 {@link SortVO} 读取排序字段与方向；{@code sort} 为 {@code null} 或 {@code sortName}/{@code sortType}
+	 * 任一方为空时<strong>不生成 ORDER BY</strong>（返回空串），不再从实体/DTO 上读取嵌入排序字段。
 	 */
 	public static String orderBy(Object entityClass, SortVO sort) {
 		if (sort == null) {
-			return orderBy(entityClass, "");
+			return "";
 		}
 		String sortName = sort.getSortName();
 		String sortType = sort.getSortType();
 		if (StringUtils.isNotBlank(sortName) && StringUtils.isNotBlank(sortType)) {
 			return orderByFromExplicitSort(entityClass, StringUtils.trim(sortName), StringUtils.trim(sortType));
 		}
-		return orderBy(entityClass, "");
+		return "";
 	}
 
 	private static String orderByFromExplicitSort(Object entityClass, String sortName, String sortType) {
 		if (!SAFE_FIELD_NAME.matcher(sortName).matches()) {
-			throw CrudBizCode.SORT_FIELD_PATTERN_INVALID.badRequestFormatted(sortName);
+			throw BizException.validWarn(CrudBizCode.SORT_FIELD_PATTERN_INVALID, sortName);
 		}
 		List<String> columns = getTableColumns(entityClass, true);
 		if (!columns.contains(sortName)) {
-			throw CrudBizCode.SORT_FIELD_NOT_MAPPED.badRequestFormatted(sortName);
+			throw BizException.validWarn(CrudBizCode.SORT_FIELD_NOT_MAPPED, sortName);
 		}
 		sortType = lower(sortType);
 		sortType = (sortType.startsWith("asc") || "0".equals(sortType)) ? "asc" : sortType;
 		sortType = (sortType.startsWith("desc") || "1".equals(sortType)) ? "desc" : sortType;
 		if (!"asc".equals(sortType) && !"desc".equals(sortType)) {
-			throw CrudBizCode.SORT_TYPE_INVALID.badRequestFormatted(sortType);
+			throw BizException.validWarn(CrudBizCode.SORT_TYPE_INVALID, sortType);
 		}
 		return rename(sortName) + " " + sortType;
 	}
@@ -679,18 +680,32 @@ public final class CommonSqlProvider {
 		// descending ascending
 		String orderBy = "";
 		List<String> columns = getTableColumns(entityClass);
-		Object sortNameObj = readField(entityClass, "sortName");
-		Object sortTypeObj = readField(entityClass, "sortType");
-		String sortName = sortNameObj == null ? null : String.valueOf(sortNameObj);
-		String sortType = sortTypeObj == null ? null : String.valueOf(sortTypeObj);
-		if (!StringUtils.isEmpty(sortName) && !StringUtils.isEmpty(sortType)) {
-			sortType = lower(sortType);
-			sortType = sortType.startsWith("asc") ? "asc" : sortType;
-			sortType = sortType.startsWith("desc") ? "desc" : sortType;
-			sortType = "0".equals(sortType) ? "asc" : sortType;
-			sortType = "1".equals(sortType) ? "desc" : sortType;
-			orderBy = (StringUtils.isEmpty(aliasTable) ? "" : aliasTable + ".") + rename(sortName) + " " + sortType;
-		} else {// 默认按照修改时间或者行号排序
+		/*
+		 * 仅从「自身声明了 sortName/sortType」的查询 DTO 上读取嵌入排序；普通表实体（如 User）无此字段，
+		 * 若与 SortVO 组合使用且 SortVO 未带排序，会经 orderBy(entity, sort) 回退到本方法，此时不得对实体
+		 * 调用 readField(sortName)，否则会触发 FieldUtils「Cannot locate field sortName」。
+		 */
+		boolean embeddedSortSupported = !(entityClass instanceof Class<?>);
+		if (embeddedSortSupported) {
+			Class<?> beanClass = entityClass.getClass();
+			embeddedSortSupported = FieldUtils.getField(beanClass, "sortName", true) != null
+					&& FieldUtils.getField(beanClass, "sortType", true) != null;
+		}
+		if (embeddedSortSupported) {
+			Object sortNameObj = readField(entityClass, "sortName");
+			Object sortTypeObj = readField(entityClass, "sortType");
+			String sortName = sortNameObj == null ? null : String.valueOf(sortNameObj);
+			String sortType = sortTypeObj == null ? null : String.valueOf(sortTypeObj);
+			if (!StringUtils.isEmpty(sortName) && !StringUtils.isEmpty(sortType)) {
+				sortType = lower(sortType);
+				sortType = sortType.startsWith("asc") ? "asc" : sortType;
+				sortType = sortType.startsWith("desc") ? "desc" : sortType;
+				sortType = "0".equals(sortType) ? "asc" : sortType;
+				sortType = "1".equals(sortType) ? "desc" : sortType;
+				orderBy = (StringUtils.isEmpty(aliasTable) ? "" : aliasTable + ".") + rename(sortName) + " " + sortType;
+			}
+		}
+		if (StringUtils.isEmpty(orderBy)) {// 默认按照修改时间或者行号排序
 			// columns.rowno
 			for (String column : columns) {// 如果没有传,有行号,按行号排序,没有行号按时间排序
 				if ("rowno".equalsIgnoreCase(column)) {

@@ -3,7 +3,7 @@ package org.peach.common.mvc.validation;
 import java.util.Set;
 
 import org.peach.common.mvc.exception.BizException;
-import org.peach.common.mvc.result.code.ModelValidateBizCode;
+import org.peach.common.mvc.result.code.Message400;
 import org.springframework.util.Assert;
 
 import jakarta.annotation.PostConstruct;
@@ -12,10 +12,13 @@ import jakarta.validation.Validator;
 
 /**
  * 模型校验工具：仅提供 {@link #valid(Object...)}，对多个对象依次执行 Bean Validation，
- * 若有违背则抛出 {@link BizException}（业务码 {@link ModelValidateBizCode#AGGREGATE}，{@code msg} 为聚合明细）。
+ * 遇<b>首条</b>约束违背即抛出 {@link BizException}（码
+ * {@link Message400#FIRST_VALIDATE_FAILURE}，{@code data} 为单条说明）。
  * <p>
- * <b>使用方式：</b>{@code ValidationUtils.shared().valid(dto, cmd, vo);} 或注入后调用实例方法。<br>
- * 须由 {@link org.peach.common.mvc.autoconfigure.ValidAutoConfiguration} 注册且在容器刷新之后使用 {@link #shared()}。
+ * <b>使用方式：</b>{@code ValidationUtils.shared().valid(dto, cmd, vo);}
+ * 或注入后调用实例方法。<br>
+ * 须由 {@link org.peach.common.mvc.autoconfigure.ValidAutoConfiguration}
+ * 注册且在容器刷新之后使用 {@link #shared()}。
  * </p>
  * <p>
  * {@code null} 入参会被跳过，仅校验非空对象。
@@ -49,8 +52,8 @@ public class ValidationUtils {
 	}
 
 	/**
-	 * 对多个数据模型依次校验；任一存在约束违背则抛出 {@link BizException#badRequest(org.peach.common.mvc.result.code.ApiResultCustomCode, String)}，
-	 * {@code msg} 为所有违背信息的聚合（带类型简名与属性路径便于区分）。
+	 * 对多个数据模型依次校验；遇首条违背即中断并抛出
+	 * {@link BizException#validWarn(org.peach.common.mvc.result.code.MessageCode, String)}。
 	 *
 	 * @param models 可变参，可传入任意个 DTO / 命令对象等；全部为 {@code null} 或零参时直接返回
 	 */
@@ -58,7 +61,6 @@ public class ValidationUtils {
 		if (models == null || models.length == 0) {
 			return;
 		}
-		StringBuilder sb = new StringBuilder();
 		for (Object model : models) {
 			if (model == null) {
 				continue;
@@ -67,17 +69,10 @@ public class ValidationUtils {
 			if (violations.isEmpty()) {
 				continue;
 			}
+			ConstraintViolation<?> v = violations.iterator().next();
 			String label = model.getClass().getSimpleName();
-			for (ConstraintViolation<?> v : violations) {
-				if (sb.length() > 0) {
-					sb.append("; ");
-				}
-				sb.append('[').append(label).append(']').append(v.getPropertyPath()).append(": ").append(v.getMessage());
-			}
-		}
-		if (sb.length() > 0) {
-			throw BizException.badRequest(ModelValidateBizCode.AGGREGATE, sb.toString());
+			String line = '[' + label + ']' + v.getPropertyPath() + ": " + v.getMessage();
+			throw BizException.validWarn(Message400.FIRST_VALIDATE_FAILURE, line);
 		}
 	}
 }
-

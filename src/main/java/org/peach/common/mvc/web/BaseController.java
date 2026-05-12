@@ -42,6 +42,9 @@ import jakarta.validation.Valid;
  * {@link org.peach.common.mybatis.service.BaseAbstractService} 复用默认能力。
  * </p>
  * <p>
+ * {@link #save} 的响应 {@code data} 为持久化后的<b>主键</b>（{@link Serializable}，常见为 {@link Long}），不再返回整份 VO。
+ * </p>
+ * <p>
  * 按主键详情路径 {@code GET .../{id}} 使用 {@link Long}，与库表 {@code bigint} 及 MyBatis 绑定一致；避免路径变量以字符串进入 JDBC 导致
  * PostgreSQL 等严格类型比较失败。
  * </p>
@@ -65,9 +68,9 @@ public abstract class BaseController<V extends Serializable, S extends BaseAbstr
 		return ApiResult.ok(service.getById(id));
 	}
 
-	@Operation(summary = "保存或更新", description = "新增时不能传入主键；更新时须传入有效主键。更新路径下通常仅非 null 字段参与 SET。请求体为 VO。")
+	@Operation(summary = "保存或更新", description = "新增时不能传入主键；更新时须传入有效主键。更新路径下通常仅非 null 字段参与 SET。响应 data 为保存后的主键。")
 	@PostMapping
-	public ApiResult<V> save(
+	public ApiResult<Serializable> save(
 			@io.swagger.v3.oas.annotations.parameters.RequestBody(description = "VO JSON：新增请勿带主键；更新须带有效主键", required = true) @Valid @RequestBody V body) {
 		return ApiResult.ok(service.save(body));
 	}
