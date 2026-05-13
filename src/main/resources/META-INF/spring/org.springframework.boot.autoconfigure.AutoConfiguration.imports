@@ -1,3 +1,4 @@
+org.peach.common.mvc.api.context.autoconfigure.ApiContextAutoConfiguration
 org.peach.common.mvc.logs.autoconfigure.PeachLoggingAutoConfiguration
 org.peach.common.mvc.openapi.autoconfigure.NacosMetadataAutoConfiguration
 org.peach.common.mvc.autoconfigure.ModuleCodeCheckConfiguration

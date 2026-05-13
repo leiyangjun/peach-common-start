@@ -1,6 +1,18 @@
 {
   "properties": [
     {
+      "name": "peach.api.context.enable",
+      "type": "java.lang.Boolean",
+      "description": "是否注册 /admin、/app、/openapi 形态路径前缀。为 true 时：控制器类未标注形态注解则使用 peach.api.context.path 默认形态；类上标注 @AdminApi/@AppApi/@OpenApi 则以类为准（不支持方法级）。",
+      "defaultValue": true
+    },
+    {
+      "name": "peach.api.context.path",
+      "type": "org.peach.common.mvc.api.context.ApiType",
+      "description": "全局路径前缀对应的形态：admin、app、openapi（YAML 可用 admin/app/openapi）。enable=true 时生效；enable=false 时可省略。",
+      "defaultValue": "admin"
+    },
+    {
       "name": "peach.logging.file.path",
       "type": "java.lang.String",
       "description": "日志目录（相对路径基于 user.dir），由 logback-spring.xml 引用；其下生成 console.log、error.log 与 archive/。",
