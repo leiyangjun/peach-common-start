@@ -10,13 +10,14 @@ import org.apache.ibatis.jdbc.SQL;
 import org.peach.common.mvc.exception.BizException;
 import org.peach.common.mybatis.code.CrudBizCode;
 import org.peach.common.mybatis.model.vo.BigPageVO;
-import org.peach.common.mybatis.model.vo.CommonQueryVO;
+import org.peach.common.mybatis.model.vo.RangeVO;
+import org.peach.common.mybatis.model.vo.SearchVO;
 import org.peach.common.mybatis.model.vo.SortVO;
 import org.springframework.util.CollectionUtils;
 
 /**
  * {@link BaseMapper} 查询、唯一键校验与模糊查询等 {@link org.apache.ibatis.annotations.SelectProvider} 入口，
- * 与 {@link CommonQueryVO}、{@link SortVO}、{@link BigPageVO} 等配合生成 {@code SELECT} 与 {@code COUNT} 动态 SQL。
+ * 与 {@link SearchVO}、{@link SortVO}、{@link BigPageVO} 等配合生成 {@code SELECT} 与 {@code COUNT} 动态 SQL。
  *
  * @author leiyangjun
  */
@@ -246,8 +247,8 @@ public class SelectSqlProvider {
 		return baseSQL;
 	}
 
-	public String likeSelectBaseSQL(@Param("entity") Object entity, @Param("query") CommonQueryVO query,
-			@Param("sort") SortVO sort) {
+	public String likeSelectBaseSQL(@Param("entity") Object entity, @Param("search") SearchVO search,
+			@Param("range") RangeVO range, @Param("sort") SortVO sort) {
 		String tableName = CommonSqlProvider.getTableName(entity);
 		List<String> columns = CommonSqlProvider.getTableColumns(entity, true);
 		// columns.add("searchValue");
@@ -258,7 +259,7 @@ public class SelectSqlProvider {
 			for (int i = 0; i < searchvalues.size(); i++) {
 				// sb.append(CommonSqlProvider.rename(searchvalues.get(i)) + " like
 				// concat('%',concat(#{searchValue},'%')) ");
-				sb.append(CommonSqlProvider.rename(searchvalues.get(i)) + " like concat('%', #{query.searchValue}, '%') ");
+				sb.append(CommonSqlProvider.rename(searchvalues.get(i)) + " like concat('%', #{search.searchValue}, '%') ");
 				if (i < searchvalues.size() - 1) {
 					sb.append("or  ");
 				}
@@ -273,11 +274,13 @@ public class SelectSqlProvider {
 				baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{entity." + column + "}");
 			}
 		}
-		String searchValStr = query == null ? null : query.getSearchValue();
+		String searchValStr = search == null ? null : search.getSearchValue();
 		if (!StringUtils.isEmpty(searchValStr) && !CollectionUtils.isEmpty(searchvalues)) {
 			baseSQL.WHERE("(" + sb.toString() + ")");
 		}
-		CommonSqlProvider.appendRangeConditions(baseSQL, entity, query);
+		if (range != null) {
+			CommonSqlProvider.appendRangeConditions(baseSQL, entity, range);
+		}
 		String orderBy = CommonSqlProvider.orderBy(entity, sort);
 		if (!StringUtils.isEmpty(orderBy)) {
 			baseSQL.ORDER_BY(orderBy);

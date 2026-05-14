@@ -10,13 +10,14 @@ import org.springframework.http.HttpStatus;
 /**
  * 框架内部非 200 响应体：与 {@link BizException}、{@link GlobalExceptionHandler} 同包，类为包可见。
  * <p>
- * 业务码前缀经 {@link ModuleCodeCache#get()} 获取，与
+ * 业务码前缀经 {@link ModuleCodeCache#getModule()} 获取，与
  * {@link org.peach.common.mvc.autoconfigure.ModuleCodeCheckConfiguration}、
- * {@link org.peach.common.mvc.autoconfigure.SpringApplicationModuleProperties} 约定一致。
+ * {@link org.peach.common.mvc.autoconfigure.SpringApplicationModuleProperties}
+ * 约定一致。
  * </p>
  * <p>
- * HTTP 响应体由 {@code ResponseEntity<ErrorResult>} 约定，经 Spring MVC / Jackson 对 {@link #getCode()}、
- * {@link #getMsg()} 等完成 JSON 序列化，与 {@link #toString()} 无关。
+ * HTTP 响应体由 {@code ResponseEntity<ErrorResult>} 约定，经 Spring MVC / Jackson 对
+ * {@link #getCode()}、 {@link #getMsg()} 等完成 JSON 序列化，与 {@link #toString()} 无关。
  * </p>
  */
 final class ErrorResult {
@@ -42,7 +43,8 @@ final class ErrorResult {
 	}
 
 	/**
-	 * 仅用于日志等场景的简要文本输出；与 {@code ResponseEntity<ErrorResult>} 的 JSON 响应体无关（响应由 Jackson 序列化属性）。
+	 * 仅用于日志等场景的简要文本输出；与 {@code ResponseEntity<ErrorResult>} 的 JSON 响应体无关（响应由
+	 * Jackson 序列化属性）。
 	 */
 	@Override
 	public String toString() {
@@ -50,8 +52,7 @@ final class ErrorResult {
 	}
 
 	static ErrorResult validWarn(MessageCode messageCode) {
-		return new ErrorResult(
-				ModuleCodeCache.get() + HttpStatus.BAD_REQUEST.value() + messageCode.code(),
+		return new ErrorResult(ModuleCodeCache.getModule() + HttpStatus.BAD_REQUEST.value() + messageCode.code(),
 				messageCode.msg());
 	}
 
@@ -64,31 +65,26 @@ final class ErrorResult {
 		} else {
 			msg = Objects.toString(template, "") + Objects.toString(validMsg, "");
 		}
-		return new ErrorResult(
-				ModuleCodeCache.get() + HttpStatus.BAD_REQUEST.value() + messageCode.code(), msg);
+		return new ErrorResult(ModuleCodeCache.getModule() + HttpStatus.BAD_REQUEST.value() + messageCode.code(), msg);
 	}
 
 	static ErrorResult error(MessageCode messageCode) {
-		return new ErrorResult(
-				ModuleCodeCache.get() + HttpStatus.INTERNAL_SERVER_ERROR.value() + messageCode.code(),
+		return new ErrorResult(ModuleCodeCache.getModule() + HttpStatus.INTERNAL_SERVER_ERROR.value() + messageCode.code(),
 				messageCode.msg());
 	}
 
 	static ErrorResult unauthorized(MessageCode messageCode) {
-		return new ErrorResult(
-				ModuleCodeCache.get() + HttpStatus.UNAUTHORIZED.value() + messageCode.code(),
+		return new ErrorResult(ModuleCodeCache.getModule() + HttpStatus.UNAUTHORIZED.value() + messageCode.code(),
 				messageCode.msg());
 	}
 
 	static ErrorResult forbidden(MessageCode messageCode) {
-		return new ErrorResult(
-				ModuleCodeCache.get() + HttpStatus.FORBIDDEN.value() + messageCode.code(),
+		return new ErrorResult(ModuleCodeCache.getModule() + HttpStatus.FORBIDDEN.value() + messageCode.code(),
 				messageCode.msg());
 	}
 
 	static ErrorResult notFound(MessageCode messageCode) {
-		return new ErrorResult(
-				ModuleCodeCache.get() + HttpStatus.NOT_FOUND.value() + messageCode.code(),
+		return new ErrorResult(ModuleCodeCache.getModule() + HttpStatus.NOT_FOUND.value() + messageCode.code(),
 				messageCode.msg());
 	}
 }

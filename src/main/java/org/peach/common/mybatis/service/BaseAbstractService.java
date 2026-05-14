@@ -11,6 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.peach.common.mybatis.mapper.BaseMapper;
 import org.peach.common.mybatis.mapper.CommonSqlProvider;
+import org.peach.common.mybatis.model.vo.SearchVO;
 import org.peach.common.mybatis.model.vo.PageVO;
 import org.peach.common.mybatis.model.vo.SortVO;
 import org.peach.common.utils.BeanUtil;
@@ -23,7 +24,8 @@ import com.github.pagehelper.PageInfo;
  * 单表通用 Service（方案 A）：对外使用 VO，对内与 {@link BaseMapper} 使用 Entity；提供查询、保存与分页，不提供物理删除。
  * <p>
  * VO ↔ Entity 统一由 {@link BeanUtil#copy(Object, Class)} 按同名属性浅拷贝；须具备无参构造。若映射规则复杂，可继承本类后
- * 重写 {@link #getById}、{@link #listPage}、{@link #save}、{@link #toVoPageInfo} 等，或不用本基类、在业务 Service 中手写转换。
+ * 重写 {@link #getById}、{@link #listPage}、{@link #save}、{@link #toVoPageInfo} 等；默认分页走
+ * {@link org.peach.common.mybatis.mapper.BaseMapper#likeSelectBase}（等值 + 可选关键字，区间参数传 {@code null}），或不用本基类、在业务 Service 中手写转换。
  * </p>
  *
  * @param <M> Mapper 类型
@@ -50,11 +52,18 @@ public abstract class BaseAbstractService<M extends BaseMapper<E>, E extends Ser
 		return row == null ? null : BeanUtil.copy(row, voClass);
 	}
 
+	/**
+	 * 默认分页：等值条件来自 VO 拷贝实体；关键字传入 Mapper 模糊片段；调用 Mapper 时区间固定传 {@code null}（不拼区间 SQL）。
+	 * <p>
+	 * 对外仍不暴露 {@link org.peach.common.mybatis.model.vo.RangeVO}；若列表需要区间过滤，请子类重写本方法或自定义 Mapper。
+	 * </p>
+	 */
+	@Override
 	@Transactional(readOnly = true)
-	public PageInfo<V> listPage(V condition, PageVO page, SortVO sort) {
+	public PageInfo<V> listPage(V condition, SearchVO searchVO, PageVO page, SortVO sort) {
 		PageHelper.startPage(page.getPageNum(), page.getPageSize());
 		E cond = condition == null ? null : BeanUtil.copy(condition, entityClass);
-		List<E> rows = mapper.selectBase(cond, sort);
+		List<E> rows = mapper.likeSelectBase(cond, searchVO, null, sort);
 		return toVoPageInfo(new PageInfo<>(rows));
 	}
 

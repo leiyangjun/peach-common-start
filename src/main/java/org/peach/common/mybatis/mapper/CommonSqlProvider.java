@@ -24,7 +24,7 @@ import org.peach.common.mybatis.annotation.SearchValue;
 import org.peach.common.mybatis.annotation.TableName;
 import org.peach.common.mybatis.annotation.Unique;
 import org.peach.common.mybatis.code.CrudBizCode;
-import org.peach.common.mybatis.model.vo.CommonQueryVO;
+import org.peach.common.mybatis.model.vo.RangeVO;
 import org.peach.common.mybatis.model.vo.SortVO;
 import org.peach.common.utils.IdUtil;
 import org.peach.common.utils.LoginUserUtil;
@@ -198,10 +198,14 @@ public final class CommonSqlProvider {
 	}
 
 	/**
-	 * 追加区间条件：实体中仅允许一个字段标记 {@link Range}，并使用 query 的 startValue/endValue。
+	 * 追加区间条件：实体中仅允许一个字段标记 {@link Range}，并使用 range 的 startValue/endValue。
+	 * <p>
+	 * {@link org.peach.common.mybatis.mapper.BaseMapper#likeSelectBase} 在 {@code range != null} 时由
+	 * {@link SelectSqlProvider#likeSelectBaseSQL} 调用本方法；业务自定义 SQL 亦可直接复用。
+	 * </p>
 	 */
-	static void appendRangeConditions(SQL sql, Object entity, CommonQueryVO query) {
-		if (query == null) {
+	static void appendRangeConditions(SQL sql, Object entity, RangeVO range) {
+		if (range == null) {
 			return;
 		}
 		List<Field> rangeFields = Arrays.stream(getDeclaredFields(entity)).filter(field -> field.getAnnotation(Range.class) != null)
@@ -213,11 +217,11 @@ public final class CommonSqlProvider {
 			throw BizException.validWarn(CrudBizCode.RANGE_FIELD_MULTIPLE, String.valueOf(rangeFields.size()));
 		}
 		String column = rename(rangeFields.get(0).getName());
-		if (query.getStartValue() != null) {
-			sql.WHERE(column + " >= #{query.startValue}");
+		if (range.getStartValue() != null) {
+			sql.WHERE(column + " >= #{range.startValue}");
 		}
-		if (query.getEndValue() != null) {
-			sql.WHERE(column + " <= #{query.endValue}");
+		if (range.getEndValue() != null) {
+			sql.WHERE(column + " <= #{range.endValue}");
 		}
 	}
 

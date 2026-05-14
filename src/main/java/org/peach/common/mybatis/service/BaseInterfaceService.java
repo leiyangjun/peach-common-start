@@ -2,6 +2,7 @@ package org.peach.common.mybatis.service;
 
 import java.io.Serializable;
 
+import org.peach.common.mybatis.model.vo.SearchVO;
 import org.peach.common.mybatis.model.vo.PageVO;
 import org.peach.common.mybatis.model.vo.SortVO;
 
@@ -25,5 +26,11 @@ public interface BaseInterfaceService<V extends Serializable> {
 	 */
 	Serializable save(V vo);
 
-	PageInfo<V> listPage(V condition, PageVO page, SortVO sort);
+	/**
+	 * 分页列表：等值条件来自 {@code condition}；关键字模糊见 {@code searchVO}（可 {@code null}）。
+	 * <p>
+	 * 不在基类契约中传入区间对象：并非所有查询都需要范围过滤；需要日期/数值区间时由具体业务在 Service/Mapper 层扩展自定义查询。
+	 * </p>
+	 */
+	PageInfo<V> listPage(V condition, SearchVO searchVO, PageVO page, SortVO sort);
 }

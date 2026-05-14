@@ -56,7 +56,7 @@ public class ApiResult<T> {
 	 */
 	public static <T> ApiResult<T> ok(T data) {
 		Message200 ok = Message200.OK;
-		return new ApiResult<>(ModuleCodeCache.get() + HttpStatus.OK.value() + ok.code(), ok.msg(), data);
+		return new ApiResult<>(ModuleCodeCache.getModule() + HttpStatus.OK.value() + ok.code(), ok.msg(), data);
 	}
 
 	/**

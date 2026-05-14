@@ -32,6 +32,17 @@ class SensitiveJacksonModuleTest {
 		}
 	}
 
+	/** 注解仅在私有字段、序列化走 getter（与 Lombok {@code @Data} 常见形态一致）。 */
+	static class PrivateFieldAnnVo {
+
+		@Sensitive(SensitiveType.MOBILE)
+		private String phone = "13812345678";
+
+		public String getPhone() {
+			return phone;
+		}
+	}
+
 	@Test
 	void json_contains_masked_phone() throws JsonProcessingException {
 		ObjectMapper mapper = new ObjectMapper();
@@ -39,5 +50,13 @@ class SensitiveJacksonModuleTest {
 		String json = mapper.writeValueAsString(new SampleVo());
 		assertTrue(json.contains("138****5678"), json);
 		assertTrue(json.contains("visible"));
+	}
+
+	@Test
+	void json_masks_field_only_sensitive_on_private_property() throws JsonProcessingException {
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.registerModule(new SensitiveJacksonModule());
+		String json = mapper.writeValueAsString(new PrivateFieldAnnVo());
+		assertTrue(json.contains("138****5678"), json);
 	}
 }

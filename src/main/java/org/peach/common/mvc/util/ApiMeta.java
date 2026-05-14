@@ -38,6 +38,10 @@ public class ApiMeta implements Serializable {
 	@Schema(description = "PathPattern 表达式字符串，供 PathPatternParser 做路径匹配")
 	private String pathPattern;
 
-	@Schema(description = "处理器定位：全限定类名#方法名")
-	private String handler;
+	@Schema(description = "所属服务名，一般来自 spring.application.name，用于多服务聚合时的资源归属")
+	private String serviceName;
+
+	@Schema(description = "接口形态：admin（管理端）/ app（应用端）/ openapi（开放 API），与全局路径前缀语义一致", allowableValues = {
+			"admin", "app", "openapi" })
+	private String apiType;
 }

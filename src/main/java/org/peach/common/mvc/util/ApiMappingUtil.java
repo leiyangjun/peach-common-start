@@ -10,7 +10,10 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.peach.common.mvc.SpringBeanUtil;
+import org.peach.common.mvc.api.context.ApiType;
+import org.peach.common.mvc.api.context.validator.ApiContextValidator;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
@@ -44,9 +47,22 @@ public final class ApiMappingUtil {
 	}
 
 	/**
-	 * 获取当前服务所有 API 映射信息（按 pathPattern + method 排序）。
+	 * 获取当前服务由 Spring MVC 扫描到的 API 映射（按 pathPattern + method 排序）。
 	 */
 	public static List<ApiMeta> listAllApis() {
+		List<ApiMeta> apis = new ArrayList<>(scanMvcApis());
+		apis.sort(Comparator.comparing(ApiMeta::getPathPattern).thenComparing(ApiMeta::getMethod));
+		return apis;
+	}
+
+	/**
+	 * 中央注册表：与 {@link #listAllApis()} 同源，供 {@code /apis} 与按 {@code apiType} 过滤的接口统一消费。
+	 */
+	public static List<ApiMeta> listApiRegistry() {
+		return listAllApis();
+	}
+
+	private static List<ApiMeta> scanMvcApis() {
 		RequestMappingHandlerMapping mapping = SpringBeanUtil.getBean(RequestMappingHandlerMapping.class);
 		List<ApiMeta> apis = new ArrayList<>();
 		for (var entry : mapping.getHandlerMethods().entrySet()) {
@@ -61,48 +77,77 @@ public final class ApiMappingUtil {
 			if (patterns.isEmpty()) {
 				continue;
 			}
-			String handlerFq = handler.getBeanType().getName() + "#" + handler.getMethod().getName();
 			for (String pattern : patterns) {
 				if (shouldExcludePathPattern(pattern)) {
 					continue;
 				}
 				if (methods == null || methods.isEmpty()) {
-					apis.add(buildMeta("ALL", pattern, op, handlerFq));
+					apis.add(buildMeta("ALL", pattern, op, handler));
 					continue;
 				}
 				for (RequestMethod method : methods) {
-					apis.add(buildMeta(method.name(), pattern, op, handlerFq));
+					apis.add(buildMeta(method.name(), pattern, op, handler));
 				}
 			}
 		}
-		apis.sort(Comparator.comparing(ApiMeta::getPathPattern).thenComparing(ApiMeta::getMethod));
 		return apis;
+	}
+
+	private static String resolveSpringApplicationName() {
+		try {
+			Environment env = SpringBeanUtil.getApplicationContext().getEnvironment();
+			String name = StringUtils.trimToNull(env.getProperty("spring.application.name"));
+			return name != null ? name : "application";
+		}
+		catch (IllegalStateException ex) {
+			return "application";
+		}
 	}
 
 	/**
 	 * 按 Method 与关键字过滤 API。
 	 *
 	 * @param method    HTTP Method（GET/POST/...）
-	 * @param keyword   模糊关键字（匹配路径与接口说明，可空）
+	 * @param keyword   模糊关键字（匹配路径、摘要、说明、服务名、apiType 等，可空）
+	 * @param apiType   形态过滤：admin / app / openapi（大小写不敏感，可空表示不过滤）
 	 * @return 过滤后的 API 列表
 	 */
-	public static List<ApiMeta> searchApis(String method, String keyword) {
+	public static List<ApiMeta> searchApis(String method, String keyword, String apiType) {
 		String keywordNorm = normalize(keyword);
 		String methodNorm = normalize(method);
-		return listAllApis().stream().filter(api -> matchMethod(api, methodNorm)).filter(api -> matchKeyword(api, keywordNorm))
-				.collect(Collectors.toList());
+		String apiTypeNorm = normalize(apiType);
+		return listApiRegistry().stream().filter(api -> matchMethod(api, methodNorm)).filter(api -> matchKeyword(api, keywordNorm))
+				.filter(api -> matchApiType(api, apiTypeNorm)).collect(Collectors.toList());
 	}
 
-	private static ApiMeta buildMeta(String httpMethod, String pattern, OperationDoc op, String handlerFq) {
+	/**
+	 * 同 {@link #searchApis(String, String, String)}，不按形态过滤。
+	 */
+	public static List<ApiMeta> searchApis(String method, String keyword) {
+		return searchApis(method, keyword, null);
+	}
+
+	private static ApiMeta buildMeta(String httpMethod, String pattern, OperationDoc op, HandlerMethod handler) {
 		ApiMeta meta = new ApiMeta();
 		meta.setMethod(httpMethod);
 		meta.setPathPattern(pattern);
 		meta.setUrlPath(pattern);
 		meta.setSummary(op.summary());
 		meta.setDescription(op.description());
-		meta.setHandler(handlerFq);
 		meta.setApiDesc(op.summary());
+		meta.setServiceName(resolveSpringApplicationName());
+		// 类上无 @AdminApi/@AppApi/@OpenApi 时暂归 admin；后续可接默认形态配置或方法级元数据
+		ApiType declared = ApiContextValidator.declaredClassSurfaceOrNull(handler.getBeanType());
+		ApiType effective = declared != null ? declared : ApiType.ADMIN;
+		meta.setApiType(effective.getApiType());
 		return meta;
+	}
+
+	private static boolean matchApiType(ApiMeta api, String apiTypeNorm) {
+		if (StringUtils.isBlank(apiTypeNorm)) {
+			return true;
+		}
+		return apiTypeNorm.equals(normalize(api.getApiType()));
 	}
 
 	/**
@@ -167,7 +212,8 @@ public final class ApiMappingUtil {
 		}
 		return normalize(api.getUrlPath()).contains(keywordNorm) || normalize(api.getPathPattern()).contains(keywordNorm)
 				|| normalize(api.getApiDesc()).contains(keywordNorm) || normalize(api.getSummary()).contains(keywordNorm)
-				|| normalize(api.getDescription()).contains(keywordNorm) || normalize(api.getHandler()).contains(keywordNorm);
+				|| normalize(api.getDescription()).contains(keywordNorm)
+				|| normalize(api.getServiceName()).contains(keywordNorm) || normalize(api.getApiType()).contains(keywordNorm);
 	}
 
 	private static String normalize(String str) {

@@ -10,15 +10,17 @@ import org.apache.ibatis.annotations.SelectProvider;
 import org.apache.ibatis.annotations.UpdateProvider;
 
 import org.peach.common.mybatis.model.vo.BigPageVO;
-import org.peach.common.mybatis.model.vo.CommonQueryVO;
+import org.peach.common.mybatis.model.vo.RangeVO;
+import org.peach.common.mybatis.model.vo.SearchVO;
 import org.peach.common.mybatis.model.vo.SortVO;
 
 /**
  * 通用 Mapper 基接口：在单表实体上封装增删改查、批量与唯一性校验等操作，具体 SQL 由
  * {@link InsertSqlProvider}、{@link DeleteSqlProvider}、{@link UpdateSqlProvider}、{@link SelectSqlProvider} 按注解与入参动态生成。
  * <p>
- * 精确列表查询为「非 null 字段等值匹配」，不包含模糊与 {@link CommonQueryVO} 区间；
- * 模糊与区间请使用 {@link #likeSelectBase}。列表相关方法排序由 {@link SortVO} 传入（可 {@code null}）。
+ * 精确列表查询为「非 null 字段等值匹配」，不包含模糊匹配；
+ * 等值 + 可选关键字模糊 + 可选单字段区间请使用 {@link #likeSelectBase}（{@link org.peach.common.mybatis.model.vo.RangeVO} 可 {@code null} 表示不拼区间）。
+ * 列表相关方法排序由 {@link SortVO} 传入（可 {@code null}）。
  * </p>
  *
  * @param <T> 与表映射的实体类型，须可序列化
@@ -99,7 +101,7 @@ public interface BaseMapper<T extends Serializable> {
 	Integer updateBaseAll(T entity);
 
 	/**
-	 * 条件查询（标准列策略）：非 null 等值 + 可选 {@link SortVO}（不含模糊、不含 {@link CommonQueryVO} 区间）。
+	 * 条件查询（标准列策略）：非 null 等值 + 可选 {@link SortVO}（不含模糊、不含区间条件）。
 	 * <p>
 	 * 差异对照（vs {@link #selectBaseAll}）：主要差异在列集合策略，本方法使用 {@code getTableColumns(entity, true)}。
 	 * </p>
@@ -228,15 +230,33 @@ public interface BaseMapper<T extends Serializable> {
 	T selectUniqueValid(@Param("uniqueValue") Object uniqueValue, @Param("voClass") Class<?> voClass);
 
 	/**
-	 * 支持精确匹配与 {@link org.peach.common.mybatis.annotation.SearchValue} 模糊条件；可与 {@link org.peach.common.mybatis.annotation.Range} 组合。
+	 * 支持精确匹配、{@link org.peach.common.mybatis.annotation.SearchValue} 模糊条件，以及实体上唯一
+	 * {@link org.peach.common.mybatis.annotation.Range} 列与 {@link RangeVO} 的区间过滤。
+	 * <p>
+	 * {@code range} 为 {@code null} 时不追加区间 WHERE；{@link org.peach.common.mybatis.service.BaseAbstractService#listPage} 等默认分页场景传 {@code null} 即可。
+	 * </p>
 	 *
 	 * @param entity 查询条件实体（等值条件）
-	 * @param query  模糊搜索/区间（{@link CommonQueryVO}）
+	 * @param search 关键字模糊（{@link SearchVO}，可 {@code null}）
+	 * @param range  单字段区间（可 {@code null}）；非 {@code null} 时由 Provider 复用 {@link CommonSqlProvider#appendRangeConditions}
 	 * @param sort   排序（可为 {@code null}）
 	 * @return 结果列表
 	 */
 	@SelectProvider(type = SelectSqlProvider.class, method = "likeSelectBaseSQL")
-	List<T> likeSelectBase(@Param("entity") T entity, @Param("query") CommonQueryVO query, @Param("sort") SortVO sort);
+	List<T> likeSelectBase(@Param("entity") T entity, @Param("search") SearchVO search, @Param("range") RangeVO range,
+			@Param("sort") SortVO sort);
+
+	/**
+	 * 三参数重载：兼容仍调用 {@code likeSelectBase(entity, search, sort)} 的下游代码，等价于 {@code range == null} 的四参数形式。
+	 *
+	 * @param entity 查询条件实体
+	 * @param search 关键字模糊
+	 * @param sort   排序
+	 * @return 结果列表
+	 */
+	default List<T> likeSelectBase(T entity, SearchVO search, SortVO sort) {
+		return likeSelectBase(entity, search, null, sort);
+	}
 
 	/**
 	 * 按主键查询单条。

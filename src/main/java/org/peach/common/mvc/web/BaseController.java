@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 import org.peach.common.mvc.result.ApiResult;
+import org.peach.common.mybatis.model.vo.SearchVO;
 import org.peach.common.mybatis.model.vo.PageVO;
 import org.peach.common.mybatis.model.vo.SortVO;
 import org.peach.common.mybatis.service.BaseAbstractService;
@@ -23,8 +24,9 @@ import jakarta.validation.Valid;
 /**
  * 通用 REST 基类：入参/出参均为 VO，依赖服务层提供查询、保存与分页能力（不含物理删除）。
  * <p>
- * 分页为 {@code GET /page}，筛选条件与 VO 类型 {@code V} 的属性同名，通过查询参数绑定（{@link ModelAttribute}）；子类需标注
- * {@code @RestController} 与 {@code @RequestMapping("...")}。
+ * 分页为 {@code GET /page}：等值筛选与 VO 类型 {@code V} 的属性同名，通过 {@link ModelAttribute} 绑定；关键字参数
+ * {@code searchValue} 绑定至独立的 {@link SearchVO}。子类需标注 {@code @RestController} 与
+ * {@code @RequestMapping("...")}。
  * </p>
  *
  * <pre>
@@ -75,9 +77,13 @@ public abstract class BaseController<V extends Serializable, S extends BaseAbstr
 		return ApiResult.ok(service.save(body));
 	}
 
-	@Operation(summary = "精确条件分页查询（GET）", description = "分页与排序使用 pageNum、pageSize、sortName、sortType 查询参数；与 VO 类型 V 同名的查询参数作为等值筛选条件（未传或为空的属性不参与 WHERE）。与按主键查询 GET .../{id} 在路径模式上不冲突；仅当主键取值可能为字符串 page 时，才可能与分页路径 /page 混淆，需在业务上规避。")
+	/**
+	 * 条件分页（GET）：等值 + 可选关键字；不包含通用区间入参，区间需求由业务层扩展。
+	 */
+	@Operation(summary = "条件分页查询（GET）", description = "分页与排序：pageNum、pageSize、sortName、sortType；与 VO 类型 V 同名的参数作为等值条件；searchValue 为关键字模糊。与 GET .../{id} 路径不冲突。")
 	@GetMapping("/page")
-	public ApiResult<PageInfo<V>> page(@ModelAttribute V condition, PageVO page, SortVO sort) {
-		return ApiResult.ok(service.listPage(condition, page, sort));
+	public ApiResult<PageInfo<V>> page(@ModelAttribute V condition, @ModelAttribute SearchVO searchVO, PageVO page,
+			SortVO sort) {
+		return ApiResult.ok(service.listPage(condition, searchVO, page, sort));
 	}
 }
