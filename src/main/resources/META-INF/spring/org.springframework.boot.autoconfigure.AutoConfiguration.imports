@@ -9,4 +9,5 @@ org.peach.common.mvc.autoconfigure.MvcExceptionAutoConfiguration
 org.peach.common.mvc.autoconfigure.SpringBeanUtilAutoConfiguration
 org.peach.common.mvc.autoconfigure.ValidAutoConfiguration
 org.peach.common.mvc.jackson.sensitive.SensitiveJacksonAutoConfiguration
+org.peach.common.redis.autoconfigure.PeachRedisKeyPrefixAutoConfiguration
 org.peach.common.mvc.openapi.autoconfigure.SwaggerAutoConfiguration

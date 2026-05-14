@@ -3,8 +3,8 @@ package org.peach.common.mvc.autoconfigure;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
@@ -15,6 +15,9 @@ import org.springframework.core.env.MapPropertySource;
  * <p>
  * 使用 {@code spring.jackson.default-property-inclusion}，由 Spring Boot 原生 Jackson 自动配置消费，
  * 避免依赖 Boot 4 中搬迁的 {@code Jackson2ObjectMapperBuilderCustomizer} 包名。
+ * 本类实现 {@link org.springframework.boot.env.EnvironmentPostProcessor} 并与
+ * {@code META-INF/spring.factories} 中 {@code org.springframework.boot.env.EnvironmentPostProcessor} 键注册，
+ * 以便 Spring Boot 3 与 Boot 4（后者仍加载该弃用类型）均能发现。
  * 业务工程若在 {@code application.yml} 中自行配置该属性，此处不覆盖。
  * </p>
  *

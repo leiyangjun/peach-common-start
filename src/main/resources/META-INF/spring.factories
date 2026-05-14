@@ -1,4 +1,5 @@
-# Spring Boot 4+：使用 org.springframework.boot.EnvironmentPostProcessor（原 org.springframework.boot.env 包已弃用）
-org.springframework.boot.EnvironmentPostProcessor=\
+# 使用 org.springframework.boot.env.EnvironmentPostProcessor：Spring Boot 3 仅识别该键；
+# Boot 4 仍通过 SpringFactoriesEnvironmentPostProcessorsFactory 加载该弃用类型（与 org.springframework.boot.EnvironmentPostProcessor 等价能力）。
+org.springframework.boot.env.EnvironmentPostProcessor=\
 org.peach.common.mvc.autoconfigure.JacksonEnvPostProcessor,\
 org.peach.common.mvc.openapi.autoconfigure.OpenApiEnvironmentPostProcessor

@@ -29,7 +29,29 @@ public final class RedisKeyBuilder {
 	 * @return {@code MODULE-ACTIVE-businessId}
 	 */
 	public static String buildKey(String businessId) {
-		return ModuleCodeCache.getModule().toUpperCase() + "-" + ModuleCodeCache.getActive().toUpperCase() + "-"
-				+ businessId.trim();
+		if (businessId == null) {
+			throw new IllegalArgumentException("businessId 不能为空");
+		}
+		String tail = businessId.trim();
+		if (tail.isEmpty()) {
+			throw new IllegalArgumentException("businessId 不能为空");
+		}
+		if (tail.indexOf(':') >= 0 || tail.indexOf('-') >= 0) {
+			throw new IllegalArgumentException("businessId 不得包含 ':' 或 '-'");
+		}
+		String module = normalizeSegment(ModuleCodeCache.getModule(), "COMM");
+		String active = normalizeSegment(ModuleCodeCache.getActive(), "DEFAULT");
+		return module + "-" + active + "-" + tail;
+	}
+
+	private static String normalizeSegment(String raw, String fallbackUpper) {
+		if (raw == null) {
+			return fallbackUpper;
+		}
+		String t = raw.trim();
+		if (t.isEmpty()) {
+			return fallbackUpper;
+		}
+		return t.toUpperCase();
 	}
 }

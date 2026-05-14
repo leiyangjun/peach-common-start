@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.reflect.Method;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.peach.common.mvc.autoconfigure.ModuleCodeCache;
 
@@ -15,8 +16,9 @@ import org.peach.common.mvc.autoconfigure.ModuleCodeCache;
  */
 class RedisKeyBuilderTest {
 
+	@BeforeEach
 	@AfterEach
-	void clearCache() throws Exception {
+	void resetModuleCodeCache() throws Exception {
 		invokeSetCachedModule(null);
 		invokeSetActive(null);
 	}

@@ -3,15 +3,16 @@ package org.peach.common.mvc.openapi.autoconfigure;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
 /**
  * 为 SpringDoc 提供 Starter 级默认（业务工程无需写 springdoc 段落）。
- * 实现 {@link org.springframework.boot.EnvironmentPostProcessor}（Spring Boot 4+ 推荐包名；
- * {@code org.springframework.boot.env.EnvironmentPostProcessor} 已弃用）。
+ * 实现 {@link org.springframework.boot.env.EnvironmentPostProcessor}：与 Spring Boot 3 的
+ * {@code META-INF/spring.factories} 注册键一致；Boot 4 仍加载该弃用接口（后续可再迁回
+ * {@code org.springframework.boot.EnvironmentPostProcessor} 当全部业务工程已升 Boot 4）。
  * <p>
  * <ul>
  * <li>关闭 OpenAPI 文档缓存，避免先直连再经网关时沿用错误的 {@code servers}；</li>
