@@ -2,6 +2,7 @@ package org.peach.common.mvc.web;
 
 import java.util.List;
 
+import org.peach.common.mvc.api.context.annotation.AdminApi;
 import org.peach.common.mvc.result.ApiResult;
 import org.peach.common.mvc.util.ApiMappingUtil;
 import org.peach.common.mvc.util.ApiMeta;
@@ -19,7 +20,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  * 形态相关说明：
  * </p>
  * <ul>
- * <li>{@code GET /apis}：支持可选查询参数 {@code apiType}（admin/app/openapi），与下方三条路径使用同一注册表数据源。</li>
+ * <li>{@code GET /apis}：支持可选查询参数
+ * {@code apiType}（admin/app/openapi），与下方三条路径使用同一注册表数据源。</li>
  * <li>{@code GET /apis/type/admin}、{@code GET /apis/type/app}、{@code GET /apis/type/openapi}：按形态返回元数据列表，与
  * {@code /apis?apiType=} 使用同一注册表数据源。</li>
  * </ul>
@@ -28,6 +30,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  */
 @Tag(name = "API 目录", description = "查询本服务已注册的 HTTP 接口映射")
 @RestController
+@AdminApi
 public class ApisController {
 
 	/**

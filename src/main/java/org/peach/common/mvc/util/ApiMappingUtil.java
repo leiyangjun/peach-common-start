@@ -1,5 +1,7 @@
 package org.peach.common.mvc.util;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -17,6 +19,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
+import org.springframework.web.servlet.mvc.condition.PatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
@@ -113,7 +116,7 @@ public final class ApiMappingUtil {
 	 * @return 过滤后的 API 列表
 	 */
 	public static List<ApiMeta> searchApis(String method, String keyword, String apiType) {
-		String keywordNorm = normalize(keyword);
+		String keywordNorm = normalize(decodeKeywordIfPercentEncodedLiteral(keyword));
 		String methodNorm = normalize(method);
 		String apiTypeNorm = normalize(apiType);
 		return listApiRegistry().stream().filter(api -> matchMethod(api, methodNorm)).filter(api -> matchKeyword(api, keywordNorm))
@@ -156,13 +159,21 @@ public final class ApiMappingUtil {
 	private static OperationDoc extractOperationDoc(HandlerMethod handler) {
 		Operation operation = AnnotatedElementUtils.findMergedAnnotation(handler.getMethod(), Operation.class);
 		if (operation == null) {
+			operation = AnnotatedElementUtils.findMergedAnnotation(handler.getBeanType(), Operation.class);
+		}
+		if (operation == null) {
 			return null;
 		}
 		String summary = StringUtils.trimToNull(operation.summary());
-		if (summary == null) {
+		String description = StringUtils.trimToNull(operation.description());
+		// 仅写 description 未写 summary 的接口也应进入目录，否则 keyword 永远无法命中说明文字
+		if (summary == null && description == null) {
 			return null;
 		}
-		return new OperationDoc(summary, StringUtils.trimToNull(operation.description()));
+		if (summary == null) {
+			summary = description;
+		}
+		return new OperationDoc(summary, description);
 	}
 
 	private record OperationDoc(String summary, String description) {
@@ -170,10 +181,15 @@ public final class ApiMappingUtil {
 
 	private static List<String> extractPatterns(RequestMappingInfo info) {
 		PathPatternsRequestCondition pathPatterns = info.getPathPatternsCondition();
-		if (pathPatterns == null || pathPatterns.getPatterns().isEmpty()) {
-			return List.of();
+		if (pathPatterns != null && !pathPatterns.getPatterns().isEmpty()) {
+			return pathPatterns.getPatterns().stream().map(p -> p.getPatternString()).collect(Collectors.toList());
 		}
-		return pathPatterns.getPatterns().stream().map(p -> p.getPatternString()).collect(Collectors.toList());
+		// 使用 Ant 风格路径条件时 PathPatterns 可能为空，若不回退则 urlPath 恒空，keyword 无法按路径匹配
+		PatternsRequestCondition ant = info.getPatternsCondition();
+		if (ant != null && !ant.getPatterns().isEmpty()) {
+			return new ArrayList<>(ant.getPatterns());
+		}
+		return List.of();
 	}
 
 	/**
@@ -214,6 +230,42 @@ public final class ApiMappingUtil {
 				|| normalize(api.getApiDesc()).contains(keywordNorm) || normalize(api.getSummary()).contains(keywordNorm)
 				|| normalize(api.getDescription()).contains(keywordNorm)
 				|| normalize(api.getServiceName()).contains(keywordNorm) || normalize(api.getApiType()).contains(keywordNorm);
+	}
+
+	/**
+	 * 网关或前端可能把查询串以「字面百分号」形式传到服务端，与已解码的中文描述无法 contains 匹配；此处按需 UTF-8 解码（含少量轮次以应对双重编码）。
+	 */
+	private static String decodeKeywordIfPercentEncodedLiteral(String keyword) {
+		if (StringUtils.isBlank(keyword)) {
+			return keyword;
+		}
+		String s = keyword;
+		for (int round = 0; round < 5 && containsPercentEncodedOctet(s); round++) {
+			try {
+				String decoded = URLDecoder.decode(s, StandardCharsets.UTF_8);
+				if (decoded.equals(s)) {
+					break;
+				}
+				s = decoded;
+			}
+			catch (IllegalArgumentException ex) {
+				break;
+			}
+		}
+		return s;
+	}
+
+	private static boolean containsPercentEncodedOctet(String s) {
+		for (int i = 0; i < s.length(); i++) {
+			if (s.charAt(i) == '%' && i + 2 < s.length() && isHex(s.charAt(i + 1)) && isHex(s.charAt(i + 2))) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isHex(char c) {
+		return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 	}
 
 	private static String normalize(String str) {
