@@ -5,12 +5,9 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.lang.Nullable;
 
+
 /**
- * Redis 字符串 Key 序列化：写入时通过 {@link RedisKeyBuilder#buildKey(String)} 加前缀，
- * 读取时去掉 {@code MODULE-ACTIVE-} 两段前缀，还原为业务 ID。
- * <p>
- * 仅适用于「逻辑 Key 为业务尾段」的场景；直连 Lettuce/Jedis 不会经过本序列化器。
- * </p>
+ * Redis 字符串 Key 序列化：写入经 {@link RedisKeyBuilder#buildKey(String)} 加前缀，读取时去掉 MODULE-ACTIVE 两段。
  */
 public final class RedisKeyPrefixStringRedisSerializer implements RedisSerializer<String> {
 
@@ -33,7 +30,7 @@ public final class RedisKeyPrefixStringRedisSerializer implements RedisSerialize
 	}
 
 	/**
-	 * 去掉前两段（MODULE、ACTIVE），返回业务 ID；格式非法时原样返回，避免误删。
+	 * 去掉前两段（MODULE、ACTIVE）返回业务 ID；段数不足时原样返回。
 	 */
 	static String stripModuleActivePrefix(String fullKey) {
 		int i1 = fullKey.indexOf('-');

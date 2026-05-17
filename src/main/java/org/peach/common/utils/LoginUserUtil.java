@@ -9,8 +9,9 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+
 /**
- * 登录用户工具：从当前线程绑定的 Servlet 请求中读取网关注入的查询参数（由 JWT {@code sub} 在网关展开），不访问数据库。
+ * 从当前请求读取网关注入的登录用户查询参数（JWT {@code sub} 在网关展开为 {@code peach_*}），不访问数据库。
  */
 public final class LoginUserUtil {
 

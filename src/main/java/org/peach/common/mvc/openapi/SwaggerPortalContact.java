@@ -3,8 +3,6 @@ package org.peach.common.mvc.openapi;
 /**
  * 网关 API 文档门户在 OpenAPI {@code info.contact} 中的展示常量（名称、可选静态 URL）；
  * 经网关访问时的绝对链接一般由 {@link SwaggerOpenApiCustomizer} 动态填充。
- *
- * @author leiyangjun
  */
 public final class SwaggerPortalContact {
 

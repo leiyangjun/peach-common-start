@@ -6,13 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.peach.common.mvc.annotation.json.Sensitive;
 import org.peach.common.mvc.annotation.json.SensitiveType;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Jackson 模块写出 JSON 时脱敏。
- *
- * @author leiyangjun
  */
 class SensitiveJacksonModuleTest {
 
@@ -44,18 +43,16 @@ class SensitiveJacksonModuleTest {
 	}
 
 	@Test
-	void json_contains_masked_phone() throws JsonProcessingException {
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.registerModule(new SensitiveJacksonModule());
+	void json_contains_masked_phone() throws JacksonException {
+		ObjectMapper mapper = JsonMapper.builder().addModule(new SensitiveJacksonModule()).build();
 		String json = mapper.writeValueAsString(new SampleVo());
 		assertTrue(json.contains("138****5678"), json);
 		assertTrue(json.contains("visible"));
 	}
 
 	@Test
-	void json_masks_field_only_sensitive_on_private_property() throws JsonProcessingException {
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.registerModule(new SensitiveJacksonModule());
+	void json_masks_field_only_sensitive_on_private_property() throws JacksonException {
+		ObjectMapper mapper = JsonMapper.builder().addModule(new SensitiveJacksonModule()).build();
 		String json = mapper.writeValueAsString(new PrivateFieldAnnVo());
 		assertTrue(json.contains("138****5678"), json);
 	}

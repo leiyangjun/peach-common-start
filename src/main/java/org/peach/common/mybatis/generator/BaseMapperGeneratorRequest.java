@@ -11,8 +11,6 @@ import org.apache.commons.lang3.StringUtils;
 /**
  * 程序化调用 MyBatis Generator 时的入参：数据库连接、输出目录与表清单等，
  * 无需编写 {@code generatorConfig.xml}。
- *
- * @author leiyangjun
  */
 public final class BaseMapperGeneratorRequest {
 

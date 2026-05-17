@@ -31,7 +31,7 @@ public class SelectSqlProvider {
 		baseSQL.FROM(tableName);
 		for (String column : columns) {
 			if (CommonSqlProvider.prop(entity, column) != null) {
-				baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{entity." + column + "}");
+				baseSQL.WHERE(CommonSqlProvider.sqlColumnName(column) + "=" + CommonSqlProvider.mybatisEntityParam(entity, column));
 			}
 		}
 		String orderBy = CommonSqlProvider.orderBy(entity, sort);
@@ -50,7 +50,7 @@ public class SelectSqlProvider {
 		baseSQL.FROM(tableName);
 		for (String column : columns) {
 			if (CommonSqlProvider.prop(entity, column) != null) {
-				baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{entity." + column + "}");
+				baseSQL.WHERE(CommonSqlProvider.sqlColumnName(column) + "=" + CommonSqlProvider.mybatisEntityParam(entity, column));
 			}
 		}
 		String orderBy = CommonSqlProvider.orderBy(entity, sort);
@@ -80,13 +80,13 @@ public class SelectSqlProvider {
 		baseSQL.FROM(tableName);
 		for (String column : columns) {
 			if (CommonSqlProvider.prop(entity, column) != null) {
-				baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{entity." + column + "}");
+				baseSQL.WHERE(CommonSqlProvider.sqlColumnName(column) + "=" + CommonSqlProvider.mybatisEntityParam(entity, column));
 			}
 		}
 		if (!CommonSqlProvider.isEmptyKeyValue(bigPage.getLastId())) {
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + " > #{bigPage.lastId}");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + " > #{bigPage.lastId}");
 		}
-		baseSQL.ORDER_BY(CommonSqlProvider.rename(tableKey) + " asc");
+		baseSQL.ORDER_BY(CommonSqlProvider.sqlColumnName(tableKey) + " asc");
 		return baseSQL.toString() + " limit #{bigPage.pageSize}";
 	}
 
@@ -99,7 +99,7 @@ public class SelectSqlProvider {
 		baseSQL.FROM(tableName);
 		for (String column : columns) {
 			if (CommonSqlProvider.prop(entity, column) != null) {
-				baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{" + column + "}");
+				baseSQL.WHERE(CommonSqlProvider.sqlColumnName(column) + "=" + CommonSqlProvider.mybatisRootParam(entity, column));
 			}
 		}
 		return baseSQL.toString() + " limit 1";
@@ -132,7 +132,7 @@ public class SelectSqlProvider {
 			SQL baseSQL = new SQL();
 			baseSQL.SELECT(xinhao.toUpperCase());
 			baseSQL.FROM(tableName);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + " IN (" + sb.toString() + ")");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + " IN (" + sb.toString() + ")");
 			String orderBy = CommonSqlProvider.orderBy(voClass, sort);
 			if (!StringUtils.isEmpty(orderBy)) {
 				baseSQL.ORDER_BY(orderBy);
@@ -153,12 +153,12 @@ public class SelectSqlProvider {
 			baseSQL.FROM(tableName);
 			for (String column : columns) {
 				if (!column.equals(tableKey) && CommonSqlProvider.hasNonEmptyValue(obj, column) && !CommonSqlProvider.isCreateAuditColumn(column)) {
-					baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{" + column + "}");
+					baseSQL.WHERE(CommonSqlProvider.sqlColumnName(column) + "=" + CommonSqlProvider.mybatisRootParam(obj, column));
 				}
 			}
 			// 初次数据库没有数据时ID为空,也应该支持
 			if (CommonSqlProvider.hasNonEmptyValue(obj, tableKey)) {
-				baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "<>#{" + tableKey + "}");
+				baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + "<>" + CommonSqlProvider.mybatisRootParam(obj, tableKey));
 			}
 			return baseSQL.toString();
 		} else {
@@ -205,9 +205,9 @@ public class SelectSqlProvider {
 		SQL baseSQL = new SQL();
 		baseSQL.SELECT(countAsExistHint ? "COUNT(1)>0" : "COUNT(1)");
 		baseSQL.FROM(tableName);
-		baseSQL.WHERE(CommonSqlProvider.rename(uniqueField) + "=#{uniqueValue}");
+		baseSQL.WHERE(CommonSqlProvider.sqlColumnName(uniqueField) + "=#{uniqueValue}");
 		if (!CommonSqlProvider.isEmptyKeyValue(excludeKey)) {
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "<>#{excludeKey}");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + "<>#{excludeKey}");
 		}
 		return baseSQL;
 	}
@@ -221,7 +221,7 @@ public class SelectSqlProvider {
 		String logicField = CommonSqlProvider.getLogicDeleteField(voClass, false);
 		List<String> columns = CommonSqlProvider.getTableColumns(voClass);
 		if (StringUtils.isNotEmpty(logicField) && columns.contains(logicField)) {
-			baseSQL.WHERE(CommonSqlProvider.rename(logicField) + "=" + CommonSqlProvider.getLogicValidValue(voClass));
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(logicField) + "=" + CommonSqlProvider.getLogicValidValue(voClass));
 		}
 		return baseSQL.toString() + " limit 1";
 	}
@@ -243,7 +243,7 @@ public class SelectSqlProvider {
 		baseSQL.SELECT(selectList);
 		baseSQL.FROM(tableName);
 		String uniqueField = uniques.get(0);
-		baseSQL.WHERE(CommonSqlProvider.rename(uniqueField) + "=#{uniqueValue}");
+		baseSQL.WHERE(CommonSqlProvider.sqlColumnName(uniqueField) + "=#{uniqueValue}");
 		return baseSQL;
 	}
 
@@ -257,9 +257,9 @@ public class SelectSqlProvider {
 		StringBuilder sb = new StringBuilder();
 		if (!CollectionUtils.isEmpty(searchvalues)) {
 			for (int i = 0; i < searchvalues.size(); i++) {
-				// sb.append(CommonSqlProvider.rename(searchvalues.get(i)) + " like
+				// sb.append(CommonSqlProvider.sqlColumnName(searchvalues.get(i)) + " like
 				// concat('%',concat(#{searchValue},'%')) ");
-				sb.append(CommonSqlProvider.rename(searchvalues.get(i)) + " like concat('%', #{search.searchValue}, '%') ");
+				sb.append(CommonSqlProvider.sqlColumnName(searchvalues.get(i)) + " like concat('%', #{search.searchValue}, '%') ");
 				if (i < searchvalues.size() - 1) {
 					sb.append("or  ");
 				}
@@ -271,7 +271,7 @@ public class SelectSqlProvider {
 		baseSQL.FROM(tableName);
 		for (String column : columns) {
 			if (CommonSqlProvider.prop(entity, column) != null && !CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(entity, column))) {
-				baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{entity." + column + "}");
+				baseSQL.WHERE(CommonSqlProvider.sqlColumnName(column) + "=" + CommonSqlProvider.mybatisEntityParam(entity, column));
 			}
 		}
 		String searchValStr = search == null ? null : search.getSearchValue();
@@ -298,7 +298,7 @@ public class SelectSqlProvider {
 			SQL baseSQL = new SQL();
 			baseSQL.SELECT(xinhao.toUpperCase());
 			baseSQL.FROM(tableName);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{key}");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + "=#{key}");
 			return baseSQL.toString();
 		} else {
 			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);

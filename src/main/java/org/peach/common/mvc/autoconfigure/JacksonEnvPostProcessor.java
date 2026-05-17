@@ -13,12 +13,8 @@ import org.springframework.core.env.MapPropertySource;
  * 在未显式配置时注入 Jackson 全局序列化策略：{@code null} 字段不参与 JSON 输出（与
  * {@code @JsonInclude(JsonInclude.Include.NON_NULL)} 等价）。
  * <p>
- * 使用 {@code spring.jackson.default-property-inclusion}，由 Spring Boot 原生 Jackson 自动配置消费，
- * 避免依赖 Boot 4 中搬迁的 {@code Jackson2ObjectMapperBuilderCustomizer} 包名。
- * 本类实现 {@link org.springframework.boot.env.EnvironmentPostProcessor} 并与
- * {@code META-INF/spring.factories} 中 {@code org.springframework.boot.env.EnvironmentPostProcessor} 键注册，
- * 以便 Spring Boot 3 与 Boot 4（后者仍加载该弃用类型）均能发现。
- * 业务工程若在 {@code application.yml} 中自行配置该属性，此处不覆盖。
+ * 通过 {@code spring.jackson.default-property-inclusion=non_null} 注入默认值；
+ * 已在 {@code application.yml} 中配置时不覆盖。
  * </p>
  *
  * @author leiyangjun

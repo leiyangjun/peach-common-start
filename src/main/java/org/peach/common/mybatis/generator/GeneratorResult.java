@@ -5,8 +5,6 @@ import java.util.List;
 
 /**
  * {@link GeneratorUtil#generateAll} 的一次性生成结果：MBG 警告与已写入的 MVC 源码路径。
- *
- * @author leiyangjun
  */
 public record GeneratorResult(
 

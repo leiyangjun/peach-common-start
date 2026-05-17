@@ -7,7 +7,7 @@ import org.peach.common.mvc.result.ApiResult;
 import org.peach.common.mybatis.model.vo.SearchVO;
 import org.peach.common.mybatis.model.vo.PageVO;
 import org.peach.common.mybatis.model.vo.SortVO;
-import org.peach.common.mybatis.service.BaseAbstractService;
+import org.peach.common.mybatis.service.BaseInterfaceService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,22 +40,21 @@ import jakarta.validation.Valid;
  * </pre>
  *
  * <p>
- * 对应 Service 实现类可继承
- * {@link org.peach.common.mybatis.service.BaseAbstractService} 复用默认能力。
+ * 泛型 {@code S} 为业务 Service 接口（继承 {@link BaseInterfaceService}）；实现类可继承
+ * {@link org.peach.common.mybatis.service.BaseAbstractService} 复用默认能力，由 Spring 注入接口类型。
  * </p>
  * <p>
  * {@link #save} 的响应 {@code data} 为持久化后的<b>主键</b>（{@link Serializable}，常见为 {@link Long}），不再返回整份 VO。
  * </p>
  * <p>
- * 按主键详情路径 {@code GET .../{id}} 使用 {@link Long}，与库表 {@code bigint} 及 MyBatis 绑定一致；避免路径变量以字符串进入 JDBC 导致
- * PostgreSQL 等严格类型比较失败。
+ * 按主键详情 {@code GET .../{id}} 使用 {@link Long}，与库表 {@code bigint} 及 MyBatis 绑定一致。
  * </p>
  *
  * @param <V> 对外 VO 类型
  * @param <S> Service 类型
  * @author leiyangjun
  */
-public abstract class BaseController<V extends Serializable, S extends BaseAbstractService<?, ?, V>> {
+public abstract class BaseController<V extends Serializable, S extends BaseInterfaceService<V>> {
 
 	protected final S service;
 

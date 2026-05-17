@@ -5,22 +5,22 @@ import java.util.List;
 
 import org.peach.common.mvc.annotation.json.Sensitive;
 
-import com.fasterxml.jackson.databind.BeanDescription;
-import com.fasterxml.jackson.databind.SerializationConfig;
-import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
-import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
+import tools.jackson.databind.BeanDescription;
+import tools.jackson.databind.SerializationConfig;
+import tools.jackson.databind.ser.BeanPropertyWriter;
+import tools.jackson.databind.ser.ValueSerializerModifier;
 
 /**
  * 为带 {@link Sensitive} 且类型为 {@link String} 的 Bean 属性挂载 {@link SensitiveJsonSerializer}。
  *
  * @author leiyangjun
  */
-public class SensitiveBeanSerializerModifier extends BeanSerializerModifier {
-	
+public class SensitiveBeanSerializerModifier extends ValueSerializerModifier {
+
 	private static final long serialVersionUID = 1L;
 
 	@Override
-	public List<BeanPropertyWriter> changeProperties(SerializationConfig config, BeanDescription beanDesc,
+	public List<BeanPropertyWriter> changeProperties(SerializationConfig config, BeanDescription.Supplier beanDesc,
 			List<BeanPropertyWriter> beanProperties) {
 		for (BeanPropertyWriter writer : beanProperties) {
 			Sensitive ann = resolveSensitive(writer, beanDesc);
@@ -38,7 +38,7 @@ public class SensitiveBeanSerializerModifier extends BeanSerializerModifier {
 	/**
 	 * 优先取序列化成员上的注解；若为空则从同名字段解析（Lombok {@code @Data} 等常把 {@link Sensitive} 标在字段上、写出走 getter）。
 	 */
-	static Sensitive resolveSensitive(BeanPropertyWriter writer, BeanDescription beanDesc) {
+	static Sensitive resolveSensitive(BeanPropertyWriter writer, BeanDescription.Supplier beanDesc) {
 		Sensitive ann = writer.getAnnotation(Sensitive.class);
 		if (ann != null) {
 			return ann;
@@ -51,7 +51,8 @@ public class SensitiveBeanSerializerModifier extends BeanSerializerModifier {
 			try {
 				Field f = c.getDeclaredField(prop);
 				return f.getAnnotation(Sensitive.class);
-			} catch (@SuppressWarnings("unused") NoSuchFieldException ignored) {
+			}
+			catch (@SuppressWarnings("unused") NoSuchFieldException ignored) {
 				// 继续父类
 			}
 		}

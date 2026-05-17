@@ -7,8 +7,6 @@ import org.peach.common.mvc.annotation.json.SensitiveType;
 
 /**
  * {@link SensitiveMaskUtils} 规则单测。
- *
- * @author leiyangjun
  */
 class SensitiveMaskUtilsTest {
 

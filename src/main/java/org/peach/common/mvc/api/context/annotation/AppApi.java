@@ -11,8 +11,6 @@ import java.lang.annotation.Target;
  * <p>
  * 未标注时整类使用配置 {@code peach.api.context.path} 的默认形态对应的前缀。
  * </p>
- *
- * @author leiyangjun
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

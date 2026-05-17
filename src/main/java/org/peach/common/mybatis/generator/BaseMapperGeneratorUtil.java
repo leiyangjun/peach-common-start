@@ -37,8 +37,6 @@ import org.peach.common.mybatis.generator.BaseMapperGeneratorRequest.TableSpec;
  * <p>
  * 注意：classpath 需包含对应 JDBC 驱动（如 {@code mysql-connector-j}）。
  * </p>
- *
- * @author leiyangjun
  */
 public final class BaseMapperGeneratorUtil {
 

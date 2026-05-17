@@ -14,8 +14,6 @@ import java.lang.annotation.Target;
  * 传 {@code null} 则不追加区间条件。自定义 {@link org.apache.ibatis.annotations.SelectProvider} 亦可复用
  * {@link org.peach.common.mybatis.mapper.CommonSqlProvider#appendRangeConditions}。
  * </p>
- *
- * @author leiyangjun
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

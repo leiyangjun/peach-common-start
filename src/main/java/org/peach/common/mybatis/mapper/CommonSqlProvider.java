@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -21,6 +22,7 @@ import org.peach.common.mybatis.annotation.ID;
 import org.peach.common.mybatis.annotation.LogicDelete;
 import org.peach.common.mybatis.annotation.Range;
 import org.peach.common.mybatis.annotation.SearchValue;
+import org.peach.common.mybatis.annotation.SqlTypeHandler;
 import org.peach.common.mybatis.annotation.TableName;
 import org.peach.common.mybatis.annotation.Unique;
 import org.peach.common.mybatis.code.CrudBizCode;
@@ -34,8 +36,6 @@ import org.springframework.util.CollectionUtils;
  * 各 {@link InsertSqlProvider}、{@link DeleteSqlProvider}、{@link UpdateSqlProvider}、{@link SelectSqlProvider}
  * 共用的工具类：解析 {@link TableName}、{@link ID}、{@link LogicDelete} 等注解，生成列清单、主键、排序与区间条件等，
  * 供 MyBatis {@code Provider} 拼装动态 SQL；异常统一通过 {@link org.peach.common.mybatis.code.CrudBizCode} 抛出。
- *
- * @author leiyangjun
  */
 public final class CommonSqlProvider {
 
@@ -44,8 +44,7 @@ public final class CommonSqlProvider {
 
 	private static final Pattern SAFE_FIELD_NAME = Pattern.compile("^[a-zA-Z][a-zA-Z0-9_]{0,63}$");
 	/**
-	 * 实体类字段元数据缓存：同一 {@link Class} 在运行时不变，首次解析后复用，避免重复遍历继承链。
-	 * （基于类对象身份；热部署/多 ClassLoader 场景下以类加载器区分的类型视为不同键。）
+	 * 实体字段元数据缓存：按 {@link Class} 首次解析后复用。
 	 */
 	private static final ConcurrentHashMap<Class<?>, Field[]> ALL_DECLARED_FIELDS_CACHE = new ConcurrentHashMap<>();
 	/** 按类 + 属性名缓存 {@link FieldUtils#getField} 结果；值用 Optional 表示「曾解析但不存在」以防反复反射。 */
@@ -58,9 +57,23 @@ public final class CommonSqlProvider {
 	private static final Set<String> INSERT_AUDIT_COLUMNS = Set.of("creator", "editor", "createTime", "editTime");
 
 	/**
+	 * SQL 保留字（大写）：列名经 {@link #rename} 后与其中任一项相同（忽略大小写比较）时，在 PostgreSQL 等库中须用双引号包裹，
+	 * 否则会被解析为关键字（例如列 {@code DESC} 在 {@code ORDER BY DESC DESC} 中会语法错误）。
+	 */
+	private static final Set<String> SQL_RESERVED_WORDS = Stream.of(
+			"ALL", "AND", "ANY", "AS", "ASC", "BETWEEN", "BY", "CASE", "CAST", "CHECK", "COLUMN", "CONSTRAINT",
+			"CREATE", "CROSS", "CURRENT", "DEFAULT", "DELETE", "DESC", "DISTINCT", "DO", "DROP", "ELSE", "END",
+			"EXCEPT", "EXISTS", "FALSE", "FOR", "FOREIGN", "FROM", "FULL", "GRANT", "GROUP", "HAVING", "IN",
+			"INDEX", "INNER", "INSERT", "INTERSECT", "INTO", "IS", "JOIN", "KEY", "LEFT", "LEVEL", "LIKE", "LIMIT",
+			"NOT", "NULL", "OFFSET", "ON", "OR", "ORDER", "OUTER", "PRIMARY", "REFERENCES", "RIGHT", "ROLE", "SCHEMA",
+			"SELECT", "SESSION", "SET", "SOME", "TABLE", "THEN", "TRUE", "TYPE", "UNION", "UNIQUE", "UPDATE", "USER",
+			"USING", "VALUE", "VALUES", "VIEW", "WHEN", "WHERE", "WITH", "WITHOUT")
+			.collect(Collectors.toUnmodifiableSet());
+
+	/**
 	 * 读取 JavaBean 实例字段；{@code bean} 为 {@link Class} 或 {@code null} 时返回 {@code null}。
 	 * <p>
-	 * 使用反射直读，避免 JSON 序列化开销与类型歧义。
+	 * 使用反射直读字段值。
 	 * </p>
 	 *
 	 * @param bean 实体实例（勿传 {@link Class}）
@@ -135,20 +148,20 @@ public final class CommonSqlProvider {
 		Class<?> clazz = owner instanceof Class ? (Class<?>) owner : owner.getClass();
 		String editTimeColumn = findColumnIgnoreCase(columns, "editTime");
 		if (editTimeColumn != null) {
-			sql.SET(rename(editTimeColumn) + "=CURRENT_TIMESTAMP");
+			sql.SET(sqlColumnName(editTimeColumn) + "=CURRENT_TIMESTAMP");
 		}
 		String editorIdColumn = findColumnIgnoreCase(columns, "editorId");
 		String editorColumn = findColumnIgnoreCase(columns, "editor");
 		String editorNameColumn = findColumnIgnoreCase(columns, "editorName");
 		if (editorIdColumn != null) {
-			sql.SET(rename(editorIdColumn) + "=" + literalAuditUserValue(clazz, "editorId", uid));
+			sql.SET(sqlColumnName(editorIdColumn) + "=" + literalAuditUserValue(clazz, "editorId", uid));
 		}
 		if (editorColumn != null) {
-			sql.SET(rename(editorColumn) + "=" + literalAuditUserValue(clazz, "editor", uid));
+			sql.SET(sqlColumnName(editorColumn) + "=" + literalAuditUserValue(clazz, "editor", uid));
 		}
 		String nickname = LoginUserUtil.getLoginUserNickname();
 		if (editorNameColumn != null && StringUtils.isNotBlank(nickname)) {
-			sql.SET(rename(editorNameColumn) + "='" + escapeSqlString(nickname) + "'");
+			sql.SET(sqlColumnName(editorNameColumn) + "='" + escapeSqlString(nickname) + "'");
 		}
 	}
 
@@ -156,7 +169,7 @@ public final class CommonSqlProvider {
 		return INSERT_AUDIT_COLUMNS.contains(column);
 	}
 
-	/** UPDATE 时由 {@link #appendEditorAuditSet} 统一填充的修改侧审计列，避免与实体 SET 重复。 */
+	/** 修改侧审计列，由 {@link #appendEditorAuditSet} 统一写入，不参与实体 SET。 */
 	static boolean isEditorAuditColumn(String column) {
 		return "editor".equals(column) || "editTime".equals(column) || "editorId".equals(column)
 				|| "editorName".equals(column);
@@ -216,7 +229,7 @@ public final class CommonSqlProvider {
 		if (rangeFields.size() > 1) {//RANGE_FIELD_MULTIPLE
 			throw BizException.validWarn(CrudBizCode.RANGE_FIELD_MULTIPLE, String.valueOf(rangeFields.size()));
 		}
-		String column = rename(rangeFields.get(0).getName());
+		String column = sqlColumnName(rangeFields.get(0).getName());
 		if (range.getStartValue() != null) {
 			sql.WHERE(column + " >= #{range.startValue}");
 		}
@@ -276,7 +289,7 @@ public final class CommonSqlProvider {
 	 * @return 列名列表（大写下划线）
 	 */
 	public static List<String> getUpperTableColumns(Object entityClass) {
-		return getFilterAnnotationName(entityClass, null).stream().map(field -> rename(field))
+		return getFilterAnnotationName(entityClass, null).stream().map(CommonSqlProvider::sqlColumnName)
 				.collect(Collectors.toList());
 	}
 
@@ -296,7 +309,7 @@ public final class CommonSqlProvider {
 		}
 		tableKes = !CollectionUtils.isEmpty(fields) ? fields.get(0) : tableKes;
 		tableKes = checkFieldExists(tableKes, entityClass) ? tableKes : "";
-		return rename ? rename(tableKes) : tableKes;
+		return rename ? sqlColumnName(tableKes) : tableKes;
 	}
 
 	/**
@@ -316,7 +329,7 @@ public final class CommonSqlProvider {
 		}
 		tableKes = !CollectionUtils.isEmpty(fields) ? fields.get(0) : tableKes;
 		tableKes = checkFieldExists(tableKes, entityClass) ? tableKes : "";
-		return rename ? rename(tableKes) : tableKes;
+		return rename ? sqlColumnName(tableKes) : tableKes;
 	}
 
 	/**
@@ -359,11 +372,83 @@ public final class CommonSqlProvider {
 	}
 
 	/**
+	 * 在生成 INSERT 语句<strong>之前</strong>，对「非库自增」且主键仍为空的实体<strong>反射写入</strong>应用侧主键。
+	 * <p>
+	 * 规则：{@link ID#isSequence()} 为 true 且 {@link ID#sequenceTag()} 为空时视为<strong>数据库自增</strong>，不修改实体；
+	 * {@link ID#sequenceTag()} 非空时视为库侧序列表达式，仍不修改实体（由 SQL 字面量承担）；其余情况若主键为空，
+	 * 则按 {@link ID#isSnowflakeHash()}、字段类型与 {@link IdUtil#shortSnowId()} 生成并 set 到实体，便于后续走
+	 * {@code #{...}} 绑定且与 {@link #getTableKeyValue} 不再重复生成短雪花。
+	 * </p>
+	 *
+	 * @param entity 表对应实体实例（不可为 Class 占位）
+	 */
+	public static void ensureApplicationGeneratedPrimaryKey(Object entity) {
+		if (entity == null || entity instanceof Class) {
+			return;
+		}
+		String pkProp = getKey(entity, false);
+		if (StringUtils.isEmpty(pkProp)) {
+			return;
+		}
+		Field f = getDeclaredField(entity, pkProp);
+		if (f == null) {
+			return;
+		}
+		ID idAn = f.getAnnotation(ID.class);
+		if (idAn == null) {
+			return;
+		}
+		if (idAn.isSequence() && StringUtils.isEmpty(idAn.sequenceTag())) {
+			return;
+		}
+		if (idAn.isSequence() && StringUtils.isNotEmpty(idAn.sequenceTag())) {
+			return;
+		}
+		if (hasNonEmptyValue(entity, pkProp)) {
+			return;
+		}
+		try {
+			f.setAccessible(true);
+			Class<?> t = f.getType();
+			if (idAn.isSnowflakeHash() || isIntegralNumericKeyType(t)) {
+				assignIntegralPrimaryKey(f, entity, t, IdUtil.shortSnowId());
+			} else if (isStringLikeKeyType(t)) {
+				f.set(entity, IdUtil.shortId22());
+			} else {
+				f.set(entity, IdUtil.shortId22());
+			}
+		} catch (IllegalAccessException e) {
+			throw new IllegalStateException("无法为 " + entity.getClass().getName() + " 写入主键", e);
+		}
+	}
+
+	private static void assignIntegralPrimaryKey(Field f, Object entity, Class<?> t, long nid)
+			throws IllegalAccessException {
+		if (t == Long.class) {
+			f.set(entity, Long.valueOf(nid));
+		} else if (t == long.class) {
+			f.setLong(entity, nid);
+		} else if (t == Integer.class) {
+			f.set(entity, Integer.valueOf((int) nid));
+		} else if (t == int.class) {
+			f.setInt(entity, (int) nid);
+		} else if (t == Short.class) {
+			f.set(entity, Short.valueOf((short) nid));
+		} else if (t == short.class) {
+			f.setShort(entity, (short) nid);
+		} else if (t == Byte.class) {
+			f.set(entity, Byte.valueOf((byte) nid));
+		} else if (t == byte.class) {
+			f.setByte(entity, (byte) nid);
+		}
+	}
+
+	/**
 	 * 主键缺省时的 SQL 片段：{@link String} 类用
 	 * {@link IdUtil#shortId22()}；{@code long}/{@link Long} 用
-	 * {@link IdUtil#nextId()}； 自增/序列见
+	 * {@link IdUtil#shortSnowId()}； 自增/序列见
 	 * {@link ID#isSequence()}、{@link ID#sequenceTag()}；显式
-	 * {@link ID#isSnowflakeHash()} 强制雪花。
+	 * {@link ID#isSnowflakeHash()} 强制短雪花。
 	 *
 	 * @param entityClass 实体实例或 {@link Class}
 	 * @param msgFormat   为批量插入 MessageFormat 转义预留的引号形式（仅影响字符串主键）
@@ -375,6 +460,10 @@ public final class CommonSqlProvider {
 		ID idAn = tableKeyField == null ? null : tableKeyField.getAnnotation(ID.class);
 		Class<?> ft = tableKeyField != null ? tableKeyField.getType() : String.class;
 
+		if (tableKeyField != null && StringUtils.isNotEmpty(tableKeyStr) && hasNonEmptyValue(entityClass, tableKeyStr)) {
+			return "";
+		}
+
 		if (idAn != null && idAn.isSequence() && StringUtils.isEmpty(idAn.sequenceTag())) {
 			return "";
 		}
@@ -382,19 +471,19 @@ public final class CommonSqlProvider {
 			return idAn.sequenceTag();
 		}
 		if (idAn != null && idAn.isSnowflakeHash()) {
-			return formatKeyNumberSql(IdUtil.nextId());
+			return formatKeyNumberSql(IdUtil.shortSnowId());
 		}
 		if (isIntegralNumericKeyType(ft)) {
-			return formatKeyNumberSql(IdUtil.nextId());
+			return formatKeyNumberSql(IdUtil.shortSnowId());
 		}
 		if (isStringLikeKeyType(ft)) {
 			return formatKeyStringSql(IdUtil.shortId22(), msgFormat);
 		}
-		// 其它类型（如无 @ID）：与 String 相同采用短 ID，避免再依赖 32 位 UUID
+		// 其它类型（如无 @ID）：与 String 相同采用 shortId22
 		return formatKeyStringSql(IdUtil.shortId22(), msgFormat);
 	}
 
-	/** 整型数值主键（含 {@code long}/{@link Long}，及 int/Integer 等），空值时统一走雪花。 */
+	/** 整型数值主键（含 {@code long}/{@link Long}，及 int/Integer 等），空值时统一走短雪花。 */
 	private static boolean isIntegralNumericKeyType(Class<?> t) {
 		if (t == null) {
 			return false;
@@ -575,6 +664,32 @@ public final class CommonSqlProvider {
 	}
 
 	/**
+	 * 若列名（通常已 {@link #rename}）为 {@link #SQL_RESERVED_WORDS} 中的保留字，则用双引号包裹以作为 PostgreSQL 标识符。
+	 *
+	 * @param columnName 库侧列名
+	 * @return 原列名或 {@code "COLUMN"} 形式
+	 */
+	public static String quoteIfReserved(String columnName) {
+		if (StringUtils.isBlank(columnName)) {
+			return columnName;
+		}
+		if (SQL_RESERVED_WORDS.contains(columnName.toUpperCase(Locale.ROOT))) {
+			return "\"" + columnName + "\"";
+		}
+		return columnName;
+	}
+
+	/**
+	 * Java 驼峰属性名 → 库列名，并对 SQL 保留字加双引号；供 INSERT/UPDATE/SELECT/WHERE/ORDER BY 等列标识符位置统一使用。
+	 *
+	 * @param javaPropertyName 实体属性名（驼峰）
+	 * @return 可安全写入 SQL 的列标识符
+	 */
+	public static String sqlColumnName(String javaPropertyName) {
+		return quoteIfReserved(rename(javaPropertyName));
+	}
+
+	/**
 	 * 下划线大写列名转驼峰属性名。
 	 *
 	 * @param name       如 {@code ABC_EFF}
@@ -670,7 +785,7 @@ public final class CommonSqlProvider {
 		if (!"asc".equals(sortType) && !"desc".equals(sortType)) {
 			throw BizException.validWarn(CrudBizCode.SORT_TYPE_INVALID, sortType);
 		}
-		return rename(sortName) + " " + sortType;
+		return sqlColumnName(sortName) + " " + sortType;
 	}
 
 	/**
@@ -706,27 +821,75 @@ public final class CommonSqlProvider {
 				sortType = sortType.startsWith("desc") ? "desc" : sortType;
 				sortType = "0".equals(sortType) ? "asc" : sortType;
 				sortType = "1".equals(sortType) ? "desc" : sortType;
-				orderBy = (StringUtils.isEmpty(aliasTable) ? "" : aliasTable + ".") + rename(sortName) + " " + sortType;
+				orderBy = (StringUtils.isEmpty(aliasTable) ? "" : aliasTable + ".") + sqlColumnName(sortName) + " " + sortType;
 			}
 		}
 		if (StringUtils.isEmpty(orderBy)) {// 默认按照修改时间或者行号排序
 			// columns.rowno
 			for (String column : columns) {// 如果没有传,有行号,按行号排序,没有行号按时间排序
 				if ("rowno".equalsIgnoreCase(column)) {
-					orderBy = (StringUtils.isEmpty(aliasTable) ? "" : aliasTable + ".") + rename(column) + " asc";
+					orderBy = (StringUtils.isEmpty(aliasTable) ? "" : aliasTable + ".") + sqlColumnName(column) + " asc";
 					break;
 				}
 			}
 			if (StringUtils.isEmpty(orderBy)) {
 				for (String column : columns) {
 					if ("EditTime".equalsIgnoreCase(column)) {
-						orderBy = (StringUtils.isEmpty(aliasTable) ? "" : aliasTable + ".") + rename(column) + " desc";
+						orderBy = (StringUtils.isEmpty(aliasTable) ? "" : aliasTable + ".") + sqlColumnName(column) + " desc";
 						break;
 					}
 				}
 			}
 		}
 		return orderBy;
+	}
+
+	/**
+	 * 单参数实体下的根属性占位符：{@code #{prop}} 或 {@code #{prop,typeHandler=...}}。
+	 *
+	 * @param entityBean       实体实例；若为 {@link Class} 则按该类解析字段上的 {@link SqlTypeHandler}
+	 * @param javaPropertyName Java 属性名（驼峰）
+	 */
+	public static String mybatisRootParam(Object entityBean, String javaPropertyName) {
+		Class<?> clazz = entityBean instanceof Class ? (Class<?>) entityBean : entityBean.getClass();
+		return mybatisParamWithPath(clazz, javaPropertyName, javaPropertyName);
+	}
+
+	/**
+	 * {@code @Param("entity")} 下的属性占位符：{@code #{entity.prop}} 或带 {@code typeHandler}。
+	 *
+	 * @param entityBean       实体实例或实体 {@link Class}
+	 * @param javaPropertyName Java 属性名
+	 */
+	public static String mybatisEntityParam(Object entityBean, String javaPropertyName) {
+		Class<?> clazz = entityBean instanceof Class ? (Class<?>) entityBean : entityBean.getClass();
+		return mybatisParamWithPath(clazz, "entity." + javaPropertyName, javaPropertyName);
+	}
+
+	static String mybatisParamWithPath(Class<?> entityClass, String pathInBrace, String javaPropertyName) {
+		Field f = getDeclaredField(entityClass, javaPropertyName);
+		if (f != null) {
+			SqlTypeHandler ann = f.getAnnotation(SqlTypeHandler.class);
+			if (ann != null && ann.value() != null) {
+				return "#{" + pathInBrace + ",typeHandler=" + ann.value().getName() + "}";
+			}
+		}
+		return "#{" + pathInBrace + "}";
+	}
+
+	/**
+	 * 批量 INSERT 单行 VALUES 中某一属性的 MessageFormat 片段（单引号按 MessageFormat 转义花括号）。
+	 */
+	public static String batchInsertListPropertySlot(Class<?> entityClass, String javaPropertyName) {
+		Field f = getDeclaredField(entityClass, javaPropertyName);
+		String body = "list[{0,number,#}]." + javaPropertyName;
+		if (f != null) {
+			SqlTypeHandler ann = f.getAnnotation(SqlTypeHandler.class);
+			if (ann != null && ann.value() != null) {
+				body = body + ",typeHandler=" + ann.value().getName();
+			}
+		}
+		return "#'{" + body + "}";
 	}
 
 }

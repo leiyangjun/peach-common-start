@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.peach.common.mybatis.generator.BaseMapperGeneratorRequest.TableSpec;
 
+
 /**
  * 不连库：预置实体源文件，再调 {@link BaseMapperGeneratorUtil#generateMvcSource}。
  */
@@ -53,7 +54,9 @@ class BaseMapperMvcSourceGeneratorTest {
 		assertThat(Files.readString(svc)).contains("extends BaseInterfaceService<UserVO>");
 		assertThat(Files.readString(impl))
 				.contains("extends BaseAbstractService<UserMapper, User, UserVO>", "implements UserService", "@Service");
-		assertThat(Files.readString(ctl)).contains("extends BaseController<UserVO, UserServiceImpl>", "@RestController");
+		assertThat(Files.readString(ctl))
+				.contains("extends BaseController<UserVO, UserService>", "UserService service", "@RestController")
+				.doesNotContain("UserServiceImpl");
 	}
 
 	private static Path fileNamed(List<Path> paths, String fileName) {

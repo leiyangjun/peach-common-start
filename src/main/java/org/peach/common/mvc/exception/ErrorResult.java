@@ -45,7 +45,9 @@ final class ErrorResult {
 	/**
 	 * 仅用于日志等场景的简要文本输出；与 {@code ResponseEntity<ErrorResult>} 的 JSON 响应体无关（响应由
 	 * Jackson 序列化属性）。
-	 */
+ *
+ * @author leiyangjun
+ */
 	@Override
 	public String toString() {
 		return "ErrorResult[code=" + code + ", msg=" + msg + "]";

@@ -46,7 +46,7 @@ public class ValidationUtils {
 		ValidationUtils u = instance;
 		if (u == null) {
 			throw new IllegalStateException(
-					"ValidationUtils 尚未就绪：请确认已引入 spring-boot-starter-validation、Spring 容器已刷新，且未排除 ValidAutoConfiguration");
+					"ValidationUtils 尚未就绪：请确认 Spring 容器已刷新、未排除 ValidAutoConfiguration，且存在 jakarta.validation.Validator（由 peach-common-start 传递的 spring-boot-starter-validation 提供）");
 		}
 		return u;
 	}

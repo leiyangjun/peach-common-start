@@ -13,8 +13,6 @@ import java.lang.annotation.Target;
  * {@link org.peach.common.mybatis.mapper.BaseMapper#selectUniqueValid(Object, Class)} 仅接受<strong>唯一键列对应的一个值</strong>与实体 {@link Class}，
  * 与 {@code checkUnique(uniqueValue, Class, excludeKey)} / {@code checkExist(...)} 等配合使用（单值 + 类型，排除主键可选）。
  * </p>
- *
- * @author leiyangjun
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

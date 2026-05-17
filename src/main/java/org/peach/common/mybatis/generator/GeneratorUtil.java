@@ -17,8 +17,6 @@ import org.apache.commons.lang3.StringUtils;
  * {@link BaseMapperGeneratorUtil#resolveCallerBasePackage}）；也可使用显式传入
  * {@code javaSourceRoot + basePackage} 的重载。
  * </p>
- *
- * @author leiyangjun
  */
 public final class GeneratorUtil {
 

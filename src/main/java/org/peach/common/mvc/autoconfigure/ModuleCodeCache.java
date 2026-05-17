@@ -8,8 +8,6 @@ import java.util.Locale;
  * 写入；{@link org.peach.common.mvc.result.ApiResult}、
  * {@link org.peach.common.mvc.exception.ErrorResult} 通过 {@link #getModule()}
  * 读取以拼接业务 {@code code}。
- *
- * @author leiyangjun
  */
 public final class ModuleCodeCache {
 

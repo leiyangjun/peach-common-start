@@ -9,8 +9,6 @@ import java.lang.annotation.Target;
 /**
  * 标记参与关键字模糊查询的字段（与 {@link org.peach.common.mybatis.model.vo.SearchVO#getSearchValue()} 组合，见
  * {@link org.peach.common.mybatis.mapper.BaseMapper#likeSelectBase}）。
- *
- * @author leiyangjun
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

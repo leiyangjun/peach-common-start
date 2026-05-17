@@ -8,8 +8,6 @@ import java.lang.annotation.Target;
 
 /**
  * 标记逻辑删除字段（有效值 / 无效值），与 {@link org.peach.common.mybatis.mapper.CommonSqlProvider} 及各 {@code *SqlProvider} 配套。
- *
- * @author leiyangjun
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

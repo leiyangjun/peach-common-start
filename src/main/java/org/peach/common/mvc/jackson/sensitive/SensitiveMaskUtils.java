@@ -8,8 +8,6 @@ import org.springframework.util.StringUtils;
 
 /**
  * 字符串脱敏规则实现（供 Jackson 序列化器与其它展示层复用）。
- *
- * @author leiyangjun
  */
 public final class SensitiveMaskUtils {
 

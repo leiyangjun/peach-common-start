@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+
 /**
  * 在容器初始化完成后，为 {@link StringRedisTemplate} 以及「Key 已为 {@link StringRedisSerializer}」的
  * {@link RedisTemplate} 安装 {@link RedisKeyPrefixStringRedisSerializer}，使经 Template 写入的 Key 自动带统一前缀。
@@ -16,6 +17,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * 由 {@link org.peach.common.redis.autoconfigure.PeachRedisKeyPrefixAutoConfiguration} 在存在
  * {@link RedisTemplate} 时注册为 {@link BeanPostProcessor}，勿再使用组件扫描注解，以免无 Redis 依赖时类加载失败。
  * </p>
+ *
+ * @author leiyangjun
  */
 public class RedisTemplateKeyPrefixConfigurer implements BeanPostProcessor {
 

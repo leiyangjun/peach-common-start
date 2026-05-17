@@ -60,6 +60,10 @@
 		<swagger-jakarta.version>2.2.43</swagger-jakarta.version>
 		<central.publishing.maven.version>0.7.0</central.publishing.maven.version>
 		<maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
+		<!-- Yitter 漂移雪花（短数值 ID）；未纳入 peach-dependencies BOM，此处显式版本 -->
+		<yitter-idgenerator.version>1.0.6</yitter-idgenerator.version>
+		<!-- CosId 标准 Twitter 布局雪花（41+10 machine +12）；未纳入 peach-dependencies BOM -->
+		<cosid-core.version>2.12.2</cosid-core.version>
 	</properties>
 
 	<dependencyManagement>
@@ -83,6 +87,16 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<!-- Bean Validation（@Valid、jakarta.validation.*）；由本 Starter 传递，下游无需再声明 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<!-- Apache HttpClient 5：连接池 + HttpComponentsClientHttpRequestFactory，供 RestClient 复用 -->
+		<dependency>
+			<groupId>org.apache.httpcomponents.client5</groupId>
+			<artifactId>httpclient5</artifactId>
 		</dependency>
 		<!-- 明确提供 DataSource/JdbcTemplate 基础设施，保障 MyBatis 自动配置可创建 SqlSessionFactory -->
 		<dependency>
@@ -167,6 +181,23 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-text</artifactId>
 		</dependency>
+		<!-- 标准 Twitter 布局雪花：me.ahoo.cosid.snowflake.MillisecondSnowflakeId -->
+		<dependency>
+			<groupId>me.ahoo.cosid</groupId>
+			<artifactId>cosid-core</artifactId>
+			<version>${cosid-core.version}</version>
+		</dependency>
+		<!-- 短数值雪花（漂移算法）：com.github.yitter.idgen.DefaultIdGenerator -->
+		<dependency>
+			<groupId>com.github.yitter</groupId>
+			<artifactId>yitter-idgenerator</artifactId>
+			<version>${yitter-idgenerator.version}</version>
+		</dependency>
+		<!-- 显式工具 FastJson2Util；不注册 MVC HttpMessageConverter -->
+		<dependency>
+			<groupId>com.alibaba.fastjson2</groupId>
+			<artifactId>fastjson2</artifactId>
+		</dependency>
 		<!-- 仅引入核心类：全局异常中的 AuthenticationException、当前用户工具中的凭据异常等；不含 OAuth2 -->
 		<dependency>
 			<groupId>org.springframework.security</groupId>
@@ -192,11 +223,18 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<!-- 可选：存在时由 mvc.openapi.autoconfigure.NacosMetadataAutoConfiguration 写入实例元数据；@PeachCloud 依赖 discovery 在业务工程显式引入 -->
+		<!-- Nacos 注册发现 + LoadBalancer + PostgreSQL 驱动；由本 Starter 传递，下游无需重复声明 -->
 		<dependency>
 			<groupId>com.alibaba.cloud</groupId>
 			<artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
-			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-loadbalancer</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
 		</dependency>
 		<!-- 可选：使用 Nacos 配置中心时在业务工程显式引入 -->
 		<dependency>

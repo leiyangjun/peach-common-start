@@ -1,9 +1,9 @@
 package org.peach.common.mvc.jackson.sensitive;
 
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import tools.jackson.databind.module.SimpleModule;
 
 /**
- * 注册脱敏 {@link com.fasterxml.jackson.databind.ser.BeanSerializerModifier} 的 Jackson 模块。
+ * 注册脱敏 {@link tools.jackson.databind.ser.ValueSerializerModifier} 的 Jackson 模块。
  *
  * @author leiyangjun
  */

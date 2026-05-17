@@ -54,7 +54,10 @@ final class BaseMapperMvcSourceGenerator {
 		return entityPackage;
 	}
 
-	/** 与 MBG 常见习惯一致：下划线分词、首字母大写合并。 */
+	/** 与 MBG 常见习惯一致：下划线分词、首字母大写合并。
+ *
+ * @author leiyangjun
+ */
 	static String tableNameToDomainName(String tableName) {
 		String t = trimBackticks(StringUtils.trimToEmpty(tableName));
 		if (t.isEmpty()) {
@@ -128,7 +131,10 @@ final class BaseMapperMvcSourceGenerator {
 		return out;
 	}
 
-	/** 从实体复制 import，去掉表/ORM/Mapper 等，再补充 VO 所需。 */
+	/** 从实体复制 import，去掉表/ORM/Mapper 等，再补充 VO 所需。
+ *
+ * @author leiyangjun
+ */
 	private static Set<String> voImportSetFromEntity(String entitySrc) {
 		TreeSet<String> im = new TreeSet<>();
 		for (String line : entitySrc.split("\r\n|\n")) {
@@ -216,7 +222,8 @@ final class BaseMapperMvcSourceGenerator {
 		}
 		sb.append("\n/** 依据 {@link ");
 		sb.append(entityF);
-		sb.append("} 生成的对外 VO，不同步时手工改。\n */\n@Data\npublic class ").append(voClass).append(" implements Serializable {\n\n");
+		sb.append("} 生成的对外 VO，不同步时手工改。\n *\n * @author leiyangjun\n */\n@Data\npublic class ")
+				.append(voClass).append(" implements Serializable {\n\n");
 		sb.append("\t@Serial\n");
 		sb.append("\tprivate static final long serialVersionUID = 1L;\n");
 		if (fields.isEmpty()) {
@@ -235,7 +242,8 @@ final class BaseMapperMvcSourceGenerator {
 	private static String buildServiceIfc(String sp, String sName, String vof, String voName) {
 		return "package " + sp + ";\n\n" + "import " + vof + ";\n"
 				+ "import org.peach.common.mybatis.service.BaseInterfaceService;\n\n"
-				+ "/**\n * 业务服务接口：通用 CRUD 见 {@link BaseInterfaceService}，此处仅可追加扩展方法。\n */\n" + "public interface "
+				+ "/**\n * 业务服务接口：通用 CRUD 见 {@link BaseInterfaceService}，此处仅可追加扩展方法。\n *\n * @author leiyangjun\n */\n"
+				+ "public interface "
 				+ sName + " extends BaseInterfaceService<" + voName + "> {\n}\n";
 	}
 
@@ -243,23 +251,22 @@ final class BaseMapperMvcSourceGenerator {
 		String eSimple = shortName(entityF);
 		return "package " + sip + ";\n\n" + "import org.peach.common.mybatis.service.BaseAbstractService;\n"
 				+ "import org.springframework.stereotype.Service;\n\n" + "import " + mapF + ";\n" + "import " + entityF
-				+ ";\n" + "import " + vof + ";\n" + "import " + sif + ";\n\n" + "/**\n * 继承 {@link BaseAbstractService}。\n */\n"
+				+ ";\n" + "import " + vof 				+ ";\n" + "import " + sif + ";\n\n" + "/**\n * 继承 {@link BaseAbstractService}。\n *\n * @author leiyangjun\n */\n"
 				+ "@Service\n" + "public class " + implN + " extends BaseAbstractService<" + mapSimple + ", " + eSimple + ", "
 				+ voName + "> implements " + sName + " {\n\n" + "\tpublic " + implN + "(" + mapSimple + " mapper) {\n"
 				+ "\t\tsuper(mapper, " + eSimple + ".class, " + voName + ".class);\n" + "\t}\n" + "}\n";
 	}
 
 	private static String buildController(String wp, String cName, String vof, String voName, String sif, String sName, String requestMapping, String domain) {
-		String implN = toServiceImplName(sName);
-		String implF = wp.replace(".web", ".service.impl") + "." + implN;
-		String s = "package " + wp + ";\n\n" + "import org.peach.common.mvc.web.BaseController;\n"
+		return "package " + wp + ";\n\n" + "import org.peach.common.mvc.web.BaseController;\n"
 				+ "import org.springframework.web.bind.annotation.RequestMapping;\n"
 				+ "import org.springframework.web.bind.annotation.RestController;\n\n" + "import " + vof + ";\n"
-				+ "import " + implF + ";\n\n" + "import io.swagger.v3.oas.annotations.tags.Tag;\n\n" + "/**\n * 继承 {@link BaseController}。\n */\n" + "@RestController\n" + "@RequestMapping(\""
+				+ "import " + sif + ";\n\n" + "import io.swagger.v3.oas.annotations.tags.Tag;\n\n"
+				+ "/**\n * 继承 {@link BaseController}，注入 Service 接口。\n *\n * @author leiyangjun\n */\n" + "@RestController\n"
+				+ "@RequestMapping(\""
 				+ requestMapping + "\")\n" + "@Tag(name = \"" + domain + "接口\", description = \"依据代码生成，可改\")\n" + "public class "
-				+ cName + " extends BaseController<" + voName + ", " + implN + "> {\n\n" + "\tpublic " + cName
-				+ "(" + implN + " service) {\n" + "\t\tsuper(service);\n" + "\t}\n" + "}\n";
-		return s;
+				+ cName + " extends BaseController<" + voName + ", " + sName + "> {\n\n" + "\tpublic " + cName
+				+ "(" + sName + " service) {\n" + "\t\tsuper(service);\n" + "\t}\n" + "}\n";
 	}
 
 	private static String trimBackticks(String value) {
@@ -271,14 +278,6 @@ final class BaseMapperMvcSourceGenerator {
 			t = t.substring(0, t.length() - 1);
 		}
 		return t;
-	}
-
-	private static String toServiceImplName(String serviceInterfaceName) {
-		if (serviceInterfaceName != null && serviceInterfaceName.endsWith("Service")) {
-			return serviceInterfaceName.substring(0, serviceInterfaceName.length() - "Service".length())
-					+ "ServiceImpl";
-		}
-		return serviceInterfaceName + "Impl";
 	}
 
 	private static String shortName(String fqn) {

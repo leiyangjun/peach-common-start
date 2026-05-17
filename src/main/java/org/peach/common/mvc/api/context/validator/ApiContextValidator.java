@@ -18,8 +18,6 @@ import org.springframework.util.ClassUtils;
  * 且<strong>不</strong>属于框架/文档类包（如 {@code org.springframework.*}、SpringDoc、Springfox）的，
  * 即视为业务「表面」控制器，与业务包名无关。
  * </p>
- *
- * @author leiyangjun
  */
 public final class ApiContextValidator {
 

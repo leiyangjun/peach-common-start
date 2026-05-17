@@ -14,8 +14,6 @@ import org.springframework.beans.BeansException;
  * {@code private}，按 Java 语言规则<strong>不能被继承</strong>。本类通过<strong>委托</strong>其静态方法达到封装目的，
  * 行为与 Spring 一致。
  * </p>
- *
- * @author leiyangjun
  */
 public final class BeanUtil {
 

@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * 应标注在 {@link RestController} 类上（与 {@code @Within(RestController)} 切点配合）。
  * </p>
- *
- * @author leiyangjun
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

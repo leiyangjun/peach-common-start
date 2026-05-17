@@ -14,8 +14,6 @@ import org.peach.common.mvc.autoconfigure.ModuleCodeCache;
  * <p>
  * 仅接受业务尾段 {@code businessId}：去空白后非空，且不得包含 {@code ':'}、{@code '-'}。
  * </p>
- *
- * @author leiyangjun
  */
 public final class RedisKeyBuilder {
 

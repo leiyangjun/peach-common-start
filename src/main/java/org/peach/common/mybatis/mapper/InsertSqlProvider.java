@@ -20,6 +20,7 @@ import org.springframework.util.CollectionUtils;
 public class InsertSqlProvider {
 
 	public String insertBaseSQL(Object obj) {
+		CommonSqlProvider.ensureApplicationGeneratedPrimaryKey(obj);
 		String tableName = CommonSqlProvider.getTableName(obj);
 		List<String> columns = CommonSqlProvider.getTableColumns(obj);
 		String tableKey = CommonSqlProvider.getKey(obj, false);
@@ -30,31 +31,32 @@ public class InsertSqlProvider {
 		baseSQL.INSERT_INTO(tableName);
 		for (String column : columns) {
 			if (CommonSqlProvider.prop(obj, column) != null && !column.equals(tableKey) && !column.equals(logicField)) {// 如果字段为null,不计入此处操作
-				baseSQL.VALUES(CommonSqlProvider.rename(column), "#{" + column + "}");
+				baseSQL.VALUES(CommonSqlProvider.sqlColumnName(column), CommonSqlProvider.mybatisRootParam(obj, column));
 			} else if (auditUid != null && CommonSqlProvider.isInsertAuditColumnName(column) && !column.equals(tableKey)
 					&& !column.equals(logicField)) {
 				String lit = CommonSqlProvider.insertAuditValueLiteral(obj, column, auditUid);
 				if (lit != null) {
-					baseSQL.VALUES(CommonSqlProvider.rename(column), lit);
+					baseSQL.VALUES(CommonSqlProvider.sqlColumnName(column), lit);
 				}
 			}
-			// VALUES(CommonSqlProvider.rename(tableKey),"REPLACE(UUID(),''-'','''')");
+			// VALUES(CommonSqlProvider.sqlColumnName(tableKey),"REPLACE(UUID(),''-'','''')");
 			if (column.equals(tableKey) && CommonSqlProvider.hasNonEmptyValue(obj, tableKey)) {
-				baseSQL.VALUES(CommonSqlProvider.rename(tableKey), "#{" + tableKey + "}");
+				baseSQL.VALUES(CommonSqlProvider.sqlColumnName(tableKey), CommonSqlProvider.mybatisRootParam(obj, tableKey));
 			} else if (column.equals(tableKey) && !StringUtils.isEmpty(tableKeyDefaultValue)) {
-				baseSQL.VALUES(CommonSqlProvider.rename(tableKey), tableKeyDefaultValue);
+				baseSQL.VALUES(CommonSqlProvider.sqlColumnName(tableKey), tableKeyDefaultValue);
 			}
 			if (column.equals(logicField)) {
-				baseSQL.VALUES(CommonSqlProvider.rename(logicField),
+				baseSQL.VALUES(CommonSqlProvider.sqlColumnName(logicField),
 						CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(obj, logicField))
 								? CommonSqlProvider.getLogicValidValue(obj)
-								: "#{" + column + "}");
+								: CommonSqlProvider.mybatisRootParam(obj, column));
 			}
 		}
 		return baseSQL.toString();
 	}
 
 	public String insertBaseAllSQL(Object obj) {
+		CommonSqlProvider.ensureApplicationGeneratedPrimaryKey(obj);
 		String tableName = CommonSqlProvider.getTableName(obj);
 		List<String> columns = CommonSqlProvider.getTableColumns(obj);
 		String tableKey = CommonSqlProvider.getKey(obj, false);
@@ -69,28 +71,31 @@ public class InsertSqlProvider {
 						&& CommonSqlProvider.isInsertAuditColumnName(column)) {
 					String lit = CommonSqlProvider.insertAuditValueLiteral(obj, column, auditUid);
 					if (lit != null) {
-						baseSQL.VALUES(CommonSqlProvider.rename(column), lit);
+						baseSQL.VALUES(CommonSqlProvider.sqlColumnName(column), lit);
 						continue;
 					}
 				}
-				baseSQL.VALUES(CommonSqlProvider.rename(column), "#{" + column + "}");
+				baseSQL.VALUES(CommonSqlProvider.sqlColumnName(column), CommonSqlProvider.mybatisRootParam(obj, column));
 			}
 			if (column.equals(tableKey) && CommonSqlProvider.hasNonEmptyValue(obj, tableKey)) {
-				baseSQL.VALUES(CommonSqlProvider.rename(tableKey), "#{" + tableKey + "}");
+				baseSQL.VALUES(CommonSqlProvider.sqlColumnName(tableKey), CommonSqlProvider.mybatisRootParam(obj, tableKey));
 			} else if (column.equals(tableKey) && !StringUtils.isEmpty(tableKeyDefaultValue)) {
-				baseSQL.VALUES(CommonSqlProvider.rename(tableKey), tableKeyDefaultValue);
+				baseSQL.VALUES(CommonSqlProvider.sqlColumnName(tableKey), tableKeyDefaultValue);
 			}
 			if (column.equals(logicField)) {
-				baseSQL.VALUES(CommonSqlProvider.rename(logicField),
+				baseSQL.VALUES(CommonSqlProvider.sqlColumnName(logicField),
 						CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(obj, logicField))
 								? CommonSqlProvider.getLogicValidValue(obj)
-								: "#{" + column + "}");
+								: CommonSqlProvider.mybatisRootParam(obj, column));
 			}
 		}
 		return baseSQL.toString();
 	}
 
 	public <T> String batchInsertBaseSQL(List<T> list) {
+		for (T row : list) {
+			CommonSqlProvider.ensureApplicationGeneratedPrimaryKey(row);
+		}
 		T t = list.get(0);
 		String tableName = CommonSqlProvider.getTableName(t);
 		String tableKey = CommonSqlProvider.getKey(t, false);
@@ -112,7 +117,7 @@ public class InsertSqlProvider {
 		}).collect(Collectors.toList());
 
 		String xinhao = StringUtils.join(
-				columns.stream().map(column -> CommonSqlProvider.rename(column)).collect(Collectors.toList()), ",");
+				columns.stream().map(column -> CommonSqlProvider.sqlColumnName(column)).collect(Collectors.toList()), ",");
 		StringBuilder sb = new StringBuilder();
 		StringBuilder temp = new StringBuilder();
 		temp.append("(");
@@ -121,7 +126,7 @@ public class InsertSqlProvider {
 					&& columns.get(j).equals(logicKey)) {
 				temp.append("\'\'" + CommonSqlProvider.getLogicValidValue(t) + "\'\'");
 			} else {
-				temp.append("#'{'list[{0,number,#}]." + columns.get(j) + "}");
+				temp.append(CommonSqlProvider.batchInsertListPropertySlot(t.getClass(), columns.get(j)));
 			}
 			if (j < columns.size() - 1) {
 				temp.append(",");
@@ -137,7 +142,8 @@ public class InsertSqlProvider {
 			if (CommonSqlProvider.isEmptyKeyValue(CommonSqlProvider.prop(t, tableKey)) && columns.contains(tableKey)) {
 				// str = StringUtils.replace(str, "#'{'list[{0}]." + tableKey + "}",
 				// "REPLACE(UUID(),''-'','''')");
-				mf.applyPattern(temp.toString().replace("#'{'list[{0,number,#}]." + tableKey + "}",
+				mf.applyPattern(temp.toString().replace(
+						CommonSqlProvider.batchInsertListPropertySlot(t.getClass(), tableKey),
 						CommonSqlProvider.getTableKeyValue(t, true)));
 			} else {
 				mf.applyPattern(temp.toString());

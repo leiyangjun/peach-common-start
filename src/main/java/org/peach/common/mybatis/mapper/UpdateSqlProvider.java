@@ -35,14 +35,14 @@ public class UpdateSqlProvider {
 				// getCreateColumns
 				// 如果字段为null,切创建人字段不包含更新&& !jsonObject.get(column).equals("")
 				if (CommonSqlProvider.prop(obj, column) != null && !CommonSqlProvider.isCreateAuditColumn(column)) {
-					baseSQL.SET(CommonSqlProvider.rename(column) + "=#{" + column + "}");
+					baseSQL.SET(CommonSqlProvider.sqlColumnName(column) + "=" + CommonSqlProvider.mybatisRootParam(obj, column));
 				}
 			}
 			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, obj);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{" + tableKey + "}");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + "=" + CommonSqlProvider.mybatisRootParam(obj, tableKey));
 			String logicProp = CommonSqlProvider.getLogicDeleteField(obj, false);
 			if (StringUtils.isNotBlank(logicProp) && columns.contains(logicProp)) {
-				baseSQL.WHERE(CommonSqlProvider.rename(logicProp) + "=" + CommonSqlProvider.getLogicValidValue(obj));
+				baseSQL.WHERE(CommonSqlProvider.sqlColumnName(logicProp) + "=" + CommonSqlProvider.getLogicValidValue(obj));
 			}
 			return baseSQL.toString();
 		} else {
@@ -74,14 +74,14 @@ public class UpdateSqlProvider {
 				// getCreateColumns
 				// 如果字段为null,且创建人字段不包含更新
 				if (!column.equals(tableKey) && !CommonSqlProvider.isCreateAuditColumn(column)) {
-					baseSQL.SET(CommonSqlProvider.rename(column) + "=#{" + column + "}");
+					baseSQL.SET(CommonSqlProvider.sqlColumnName(column) + "=" + CommonSqlProvider.mybatisRootParam(obj, column));
 				}
 			}
 			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, obj);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{" + tableKey + "}");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + "=" + CommonSqlProvider.mybatisRootParam(obj, tableKey));
 			String logicProp = CommonSqlProvider.getLogicDeleteField(obj, false);
 			if (StringUtils.isNotBlank(logicProp) && columns.contains(logicProp)) {
-				baseSQL.WHERE(CommonSqlProvider.rename(logicProp) + "=" + CommonSqlProvider.getLogicValidValue(obj));
+				baseSQL.WHERE(CommonSqlProvider.sqlColumnName(logicProp) + "=" + CommonSqlProvider.getLogicValidValue(obj));
 			}
 			return baseSQL.toString();
 		} else {
@@ -99,9 +99,9 @@ public class UpdateSqlProvider {
 
 			baseSQL.UPDATE(tableName);
 			baseSQL.SET(
-					CommonSqlProvider.rename(logicDeleteField) + "=" + CommonSqlProvider.getLogicInvalidValue(voClass));
+					CommonSqlProvider.sqlColumnName(logicDeleteField) + "=" + CommonSqlProvider.getLogicInvalidValue(voClass));
 			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, voClass);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{key}");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + "=#{key}");
 			return baseSQL.toString();
 		} else {
 			throw BizException.validWarn(CrudBizCode.LOGIC_DELETE_CONFIG_INVALID);
@@ -117,9 +117,9 @@ public class UpdateSqlProvider {
 			SQL baseSQL = new SQL();
 			baseSQL.UPDATE(tableName);
 			baseSQL.SET(
-					CommonSqlProvider.rename(logicDeleteField) + "=" + CommonSqlProvider.getLogicValidValue(voClass));
+					CommonSqlProvider.sqlColumnName(logicDeleteField) + "=" + CommonSqlProvider.getLogicValidValue(voClass));
 			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, voClass);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{key}");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + "=#{key}");
 			return baseSQL.toString();
 		} else {
 			throw BizException.validWarn(CrudBizCode.LOGIC_DELETE_CONFIG_INVALID);
@@ -152,9 +152,9 @@ public class UpdateSqlProvider {
 			SQL baseSQL = new SQL();
 			baseSQL.UPDATE(tableName);
 			baseSQL.SET(
-					CommonSqlProvider.rename(logicDeleteField) + "=" + CommonSqlProvider.getLogicInvalidValue(voClass));
+					CommonSqlProvider.sqlColumnName(logicDeleteField) + "=" + CommonSqlProvider.getLogicInvalidValue(voClass));
 			CommonSqlProvider.appendEditorAuditSet(baseSQL, columns, voClass);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + " IN (" + sb.toString() + ")");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + " IN (" + sb.toString() + ")");
 			return baseSQL.toString();
 		} else {
 			throw BizException.validWarn(CrudBizCode.LOGIC_DELETE_CONFIG_INVALID);

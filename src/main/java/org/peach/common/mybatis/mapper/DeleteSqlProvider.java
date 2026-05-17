@@ -26,7 +26,7 @@ public class DeleteSqlProvider {
 		baseSQL.DELETE_FROM(tableName);
 		for (String column : columns) {
 			if (CommonSqlProvider.prop(obj, column) != null) {// 如果字段为null,不计入此处操作
-				baseSQL.WHERE(CommonSqlProvider.rename(column) + "=#{" + column + "}");
+				baseSQL.WHERE(CommonSqlProvider.sqlColumnName(column) + "=" + CommonSqlProvider.mybatisRootParam(obj, column));
 			}
 		}
 		return baseSQL.toString();
@@ -55,7 +55,7 @@ public class DeleteSqlProvider {
 		if (isReturn && columns.contains(tableKey)) {
 			SQL baseSQL = new SQL();
 			baseSQL.DELETE_FROM(tableName);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + " IN (" + sb.toString() + ")");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + " IN (" + sb.toString() + ")");
 			return baseSQL.toString();
 		} else {
 			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);
@@ -86,7 +86,7 @@ public class DeleteSqlProvider {
 		if (isReturn && columns.contains(tableKey)) {
 			SQL baseSQL = new SQL();
 			baseSQL.DELETE_FROM(tableName);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + " IN (" + sb.toString() + ")");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + " IN (" + sb.toString() + ")");
 			return baseSQL.toString();
 		} else {
 			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);
@@ -100,7 +100,7 @@ public class DeleteSqlProvider {
 		if (key != null && !"".equals(key) && columns.contains(tableKey)) {
 			SQL baseSQL = new SQL();
 			baseSQL.DELETE_FROM(tableName);
-			baseSQL.WHERE(CommonSqlProvider.rename(tableKey) + "=#{key}");
+			baseSQL.WHERE(CommonSqlProvider.sqlColumnName(tableKey) + "=#{key}");
 			return baseSQL.toString();
 		} else {
 			throw BizException.validWarn(CrudBizCode.TABLE_KEY_INVALID);

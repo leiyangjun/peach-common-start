@@ -9,8 +9,6 @@ import java.util.Objects;
 
 /**
  * Base64 编解码与文件/流辅助（JDK {@link java.util.Base64}）。
- *
- * @author leiyangjun
  */
 public final class Base64Util {
 

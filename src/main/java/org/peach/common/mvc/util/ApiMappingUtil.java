@@ -37,8 +37,6 @@ import io.swagger.v3.oas.annotations.Operation;
  * <p>
  * 汇总规则：仅包含标注了 Swagger {@link Operation} 且 {@code summary} 非空的处理器；并排除 Actuator、常见静态资源路径模式。
  * </p>
- *
- * @author leiyangjun
  */
 public final class ApiMappingUtil {
 

@@ -18,13 +18,10 @@ import org.peach.common.utils.annotation.TreeId;
 import org.peach.common.utils.annotation.TreeParentId;
 import org.peach.common.utils.annotation.TreeSortField;
 
+
 /**
- * 平铺列表转树：仅根据 VO 上的注解反射取值，无函数式参数。
- * <p>
- * 必填：{@link TreeId}、{@link TreeParentId}，以及 {@code List} 子节点字段（默认字段名
- * {@code children}）。<br>
- * 可选：{@link TreeSortField}；若未标注则<strong>不排序</strong>。
- * </p>
+ * 平铺列表转树：依据 {@link TreeId}、{@link TreeParentId} 与子节点 {@code List} 字段反射组装；
+ * 可选 {@link TreeSortField} 排序。
  */
 public final class TreeUtil {
 

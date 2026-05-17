@@ -10,10 +10,8 @@ import java.lang.annotation.Target;
  * 标记实体主键字段，供 {@link org.peach.common.mybatis.mapper.CommonSqlProvider} 与各 {@code *SqlProvider} 生成 SQL 时使用。
  * <p>
  * 主键为空且需自动生成时：{@link String} / {@link CharSequence} 使用 22 位 URL 安全随机串（见 {@link org.peach.common.utils.IdUtil#shortId22()}）；
- * {@code long}/{@link Long}、{@code int}/{@link Integer} 等整型使用雪花 ID（见 {@link org.peach.common.utils.IdUtil#nextId()}）。
+ * {@code long}/{@link Long}、{@code int}/{@link Integer} 等整型使用短雪花 ID（见 {@link org.peach.common.utils.IdUtil#shortSnowId()}）。
  * </p>
- *
- * @author leiyangjun
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
@@ -31,7 +29,7 @@ public @interface ID {
 	String sequenceTag() default "";
 
 	/**
-	 * 为 true 时强制使用雪花算法数值主键（否则仍按字段类型推断：仅 {@code long}/{@link Long} 走雪花）。
+	 * 为 true 时强制使用短雪花数值主键（否则仍按字段类型推断：整型走 {@link org.peach.common.utils.IdUtil#shortSnowId()}）。
 	 */
 	boolean isSnowflakeHash() default false;
 }

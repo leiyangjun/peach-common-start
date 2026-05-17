@@ -10,8 +10,6 @@ package org.peach.common.security;
  * <li>新增类型时需同步数据库 CHECK 约束、本类常量及签发令牌处的校验逻辑；</li>
  * <li>本类仅承载<strong>字符串常量</strong>，如需强类型枚举可在业务层再包装。</li>
  * </ul>
- *
- * @author leiyangjun
  */
 public final class UserType {
 

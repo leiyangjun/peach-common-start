@@ -10,8 +10,6 @@ package org.peach.common.mvc.result.code;
  * </ul>
  * 启动器框架内置枚举（{@link MessageCode#frameworkBuiltinMessageCode()} 为 {@code true}）不走本类校验。
  * </p>
- *
- * @author leiyangjun
  */
 public final class ApiResultCodeRules {
 

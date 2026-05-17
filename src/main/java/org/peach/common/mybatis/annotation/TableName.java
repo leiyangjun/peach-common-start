@@ -8,8 +8,6 @@ import java.lang.annotation.Target;
 
 /**
  * 显式指定数据库表名（默认使用类名驼峰转下划线大写）。
- *
- * @author leiyangjun
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

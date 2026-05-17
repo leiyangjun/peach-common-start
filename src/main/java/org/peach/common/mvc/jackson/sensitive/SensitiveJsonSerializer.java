@@ -1,19 +1,17 @@
 package org.peach.common.mvc.jackson.sensitive;
 
-import java.io.IOException;
-
 import org.peach.common.mvc.annotation.json.Sensitive;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
 
 /**
  * 将标记为 {@link Sensitive} 的字符串属性写出为脱敏后的文本。
  *
  * @author leiyangjun
  */
-public class SensitiveJsonSerializer extends JsonSerializer<Object> {
+public class SensitiveJsonSerializer extends ValueSerializer<Object> {
 
 	private final Sensitive rule;
 
@@ -22,7 +20,7 @@ public class SensitiveJsonSerializer extends JsonSerializer<Object> {
 	}
 
 	@Override
-	public void serialize(Object value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+	public void serialize(Object value, JsonGenerator gen, SerializationContext serializers) {
 		if (value == null) {
 			gen.writeNull();
 			return;

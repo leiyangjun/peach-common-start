@@ -4,6 +4,8 @@ org.peach.common.mvc.openapi.autoconfigure.NacosMetadataAutoConfiguration
 org.peach.common.mvc.autoconfigure.ModuleCodeCheckConfiguration
 org.peach.common.mybatis.autoconfigure.ReadWriteDataSourceAutoConfiguration
 org.peach.common.mybatis.autoconfigure.MybatisLogAutoConfiguration
+org.peach.common.mvc.autoconfigure.PeachHttpClientPoolAutoConfiguration
+org.peach.common.mvc.autoconfigure.InterServiceRestClientAutoConfiguration
 org.peach.common.mvc.autoconfigure.ApisAutoConfiguration
 org.peach.common.mvc.autoconfigure.MvcExceptionAutoConfiguration
 org.peach.common.mvc.autoconfigure.SpringBeanUtilAutoConfiguration

@@ -37,7 +37,7 @@ public class SpringBeanUtil implements ApplicationContextAware {
 	private static ApplicationContext requireContext() {
 		ApplicationContext ctx = context;
 		if (ctx == null) {
-			throw new IllegalStateException("ApplicationContext 尚未就绪，请避免在 Spring 容器初始化完成前调用 SpringBeanUtil");
+			throw new IllegalStateException("ApplicationContext 尚未就绪，须在 Spring 容器刷新完成后调用 SpringBeanUtil");
 		}
 		return ctx;
 	}
