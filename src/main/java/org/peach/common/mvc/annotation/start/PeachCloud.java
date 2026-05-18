@@ -16,10 +16,10 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * 下游业务启动类仅需标注本注解即可启动 Spring Boot 并接入服务发现。
  * </p>
  * <p>
- * <b>Maven：</b>{@code peach-common-start} 已传递 {@code spring-cloud-starter-alibaba-nacos-discovery}
- * 与 {@code spring-cloud-starter-loadbalancer}，业务工程无需再写上述依赖。若使用 Nacos 配置中心，再引入
- * {@code spring-cloud-starter-alibaba-nacos-config}，并在 {@code application.yml} 中按需配置
- * {@code spring.config.import}（Boot 3.x 推荐方式）。
+ * <b>Maven：</b>{@code peach-common-start} 已传递 Nacos 注册发现、配置中心与 LoadBalancer，业务工程无需重复声明依赖。
+ * <b>配置：</b>{@code spring.profiles.active} 须由下游显式配置（Starter 不设默认）；连接地址与账号（{@code spring.cloud.nacos.server-addr/username/password}）由下游填写。
+ * Nacos 的 namespace 等占位解析依赖上述 profile 或 {@code NACOS_NAMESPACE}；其余约定（group、DataId 等）见 Starter 默认配置。
+ * 关闭 Nacos 可使用 {@code spring.cloud.nacos.discovery.enable=false} / {@code spring.cloud.nacos.config.enable=false}。
  * </p>
  */
 @Target(ElementType.TYPE)

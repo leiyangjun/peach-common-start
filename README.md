@@ -20,7 +20,9 @@
 ## 云与 Nacos（微服务）
 
 - 启动类使用 **`@PeachCloud`**（`org.peach.common.mvc.annotation.start`，组合 `@SpringBootApplication` + `@EnableDiscoveryClient`）。
-- 须在业务 POM **显式**引入 `spring-cloud-starter-alibaba-nacos-discovery`；使用配置中心时再引入 `spring-cloud-starter-alibaba-nacos-config` 并自行配置 `spring.cloud.nacos.*`、`spring.config.import` 等（按 Spring Boot 版本要求）。
+- Nacos 注册发现、配置中心与 LoadBalancer 已由本 Starter **传递依赖**；下游仅需在 `application.yml` 填写 **`spring.cloud.nacos.server-addr/username/password`**（无 Starter 默认 IP/账号）。
+- **`spring.profiles.active` 须由下游必填**（Starter 的 `application.yml` 不再提供默认值）；`ModuleCodeCheckConfiguration` 等会在无激活 profile 时启动失败。
+- Nacos：`application.yml` 中 namespace 占位为 `${NACOS_NAMESPACE:${spring.profiles.active}}`；若未设 `NACOS_NAMESPACE`，须先有有效 profile，否则 Starter 不会在早期注入 namespace（避免静默连 public）。其余约定（group、DataId=`${spring.application.name}.yaml` 等）由 Starter 默认提供；关闭：`spring.cloud.nacos.discovery.enable=false` / `spring.cloud.nacos.config.enable=false`（默认均为开启）。
 - **未引入本 Starter** 的工程（如独立 Gateway）请自行使用 `@SpringBootApplication` / `@EnableDiscoveryClient` 等。
 
 ## 坐标
@@ -75,7 +77,7 @@
 | --- | --- |
 | `PeachLoggingAutoConfiguration` | 日志相关自动配置 |
 | `NacosMetadataAutoConfiguration` | 存在 Nacos Discovery 时写入实例元数据（OpenAPI 等） |
-| `ModuleCodeCheckConfiguration` | 校验 `spring.application.module-code` |
+| `ModuleCodeCheckConfiguration` | 校验 `spring.application.module-code` 与激活 profile（须非空） |
 | `ReadWriteDataSourceAutoConfiguration` | `spring.datasource.rw.enabled` 读写分离路由 |
 | `MybatisLogAutoConfiguration` | MyBatis SQL 日志 |
 | `ApisAutoConfiguration` | 通用 `ApisController` 等 |
@@ -123,6 +125,7 @@ GeneratorUtil.generateAll(jdbcUrl, user, pass, null,
 
 ## 配置与环境变量（摘要）
 
+- **`spring.profiles.active`**：须由业务工程显式配置（或通过 `SPRING_PROFILES_ACTIVE` 等标准方式传入）；Starter 不负责默认激活 profile。
 - **`spring.application.module-code`**：四位模块码，必填（与网关、各服务 `application.yml` 中示例一致：`AUTH`、`COMM`、`GWAY` 等）。
 - **读写分离**：见 sibling **`peach-common-service`** 的 `application.yml` 注释（`spring.datasource.rw.*`）；开启后写库 / `@Transactional(readOnly=true)` 读库路由由 `ReadWriteDataSourceAutoConfiguration` 接管。
 - **Jasypt**：已引入 `jasypt-spring-boot-starter`，敏感配置可按 Jasypt 官方方式加密（本 Starter 不负责具体密钥分发方式）。

@@ -3,17 +3,12 @@
     {
       "name": "spring.application.module-code",
       "type": "java.lang.String",
-      "description": "服务模块编码（与 ModuleCodeCheckConfiguration 一致，通常为四位）；校验通过后由 ModuleCodeCache Bean 读取（大写 trim），供 ApiResult/ErrorResult 与 RedisKeyBuilder 等使用。"
+      "description": "服务模块编码（四位，首位字母、后三位字母或数字）；由 ModuleCodeCheckConfiguration 校验后写入 ModuleCodeCache，供 ApiResult/ErrorResult 与 RedisKeyBuilder 等使用。"
     },
     {
-      "name": "spring.application.active",
+      "name": "spring.profiles.active",
       "type": "java.lang.String",
-      "description": "环境/激活名（如 dev、prod），写入 ModuleCodeCache；未配置时可由 spring.application.profiles.active 或 spring.profiles.active 回退。"
-    },
-    {
-      "name": "spring.application.profiles.active",
-      "type": "java.lang.String",
-      "description": "与 spring.application.active 等价用途的环境段；前者为空时采用本项，仍为空则使用 spring.profiles.active（Environment）首项。"
+      "description": "Spring Boot 激活 profile，须由下游服务显式配置（Starter 不注入默认值）；ModuleCodeCheckConfiguration 取 Environment.getActiveProfiles()[0] 写入 ModuleCodeCache（须非空，否则启动失败）。"
     },
     {
       "name": "peach.api.context.enable",
@@ -26,6 +21,82 @@
       "type": "org.peach.common.mvc.api.context.ApiType",
       "description": "全局路径前缀对应的形态：admin、app、openapi（YAML 可用 admin/app/openapi）。enable=true 时生效；enable=false 时可省略。",
       "defaultValue": "admin"
+    },
+    {
+      "name": "peach.http.pool.max-total",
+      "type": "java.lang.Integer",
+      "description": "Apache HttpClient 5 连接池最大连接总数（PeachHttpClientPoolAutoConfiguration）。",
+      "defaultValue": 200
+    },
+    {
+      "name": "peach.http.pool.max-per-route",
+      "type": "java.lang.Integer",
+      "description": "每个路由（目标 host:port）最大连接数。",
+      "defaultValue": 50
+    },
+    {
+      "name": "peach.http.pool.connect-timeout-ms",
+      "type": "java.lang.Integer",
+      "description": "建立 TCP 连接超时（毫秒）。",
+      "defaultValue": 5000
+    },
+    {
+      "name": "peach.http.pool.connection-request-timeout-ms",
+      "type": "java.lang.Integer",
+      "description": "从连接池获取连接等待超时（毫秒）。",
+      "defaultValue": 5000
+    },
+    {
+      "name": "peach.http.pool.response-timeout-ms",
+      "type": "java.lang.Integer",
+      "description": "响应读取超时（毫秒）。",
+      "defaultValue": 30000
+    },
+    {
+      "name": "spring.datasource.rw.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用读写分离；为 true 时由 ReadWriteDataSourceAutoConfiguration 注册写库/读库及路由 DataSource。",
+      "defaultValue": false
+    },
+    {
+      "name": "spring.datasource.rw.write.url",
+      "type": "java.lang.String",
+      "description": "写库（主库）JDBC URL；enabled=true 时必填。"
+    },
+    {
+      "name": "spring.datasource.rw.write.username",
+      "type": "java.lang.String",
+      "description": "写库用户名。"
+    },
+    {
+      "name": "spring.datasource.rw.write.password",
+      "type": "java.lang.String",
+      "description": "写库密码。"
+    },
+    {
+      "name": "spring.datasource.rw.write.driver-class-name",
+      "type": "java.lang.String",
+      "description": "写库 JDBC 驱动类名。"
+    },
+    {
+      "name": "spring.datasource.rw.read.url",
+      "type": "java.lang.String",
+      "description": "读库 JDBC URL；为空时回退写库 url。"
+    },
+    {
+      "name": "spring.datasource.rw.read.username",
+      "type": "java.lang.String",
+      "description": "读库用户名；为空时回退写库 username。"
+    },
+    {
+      "name": "spring.datasource.rw.read.password",
+      "type": "java.lang.String",
+      "description": "读库密码；为空时回退写库 password。"
+    },
+    {
+      "name": "spring.datasource.rw.read.driver-class-name",
+      "type": "java.lang.String",
+      "description": "读库 JDBC 驱动类名；为空时回退写库 driver-class-name。"
     },
     {
       "name": "peach.logging.file.path",
@@ -48,7 +119,7 @@
     {
       "name": "logging.level.root",
       "type": "java.lang.String",
-      "description": "根日志级别；未配置时由 starter 内 logback-spring.xml 按 profile 默认（非 pro/produce/product/test 为 INFO，否则为 WARN），可显式覆盖。"
+      "description": "Spring Boot 标准根日志级别；未配置时 logback-spring.xml 按 profile 默认（非 pro/produce/product/test 为 INFO，否则为 WARN），配置后可覆盖。"
     }
   ]
 }

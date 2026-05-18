@@ -5,7 +5,8 @@
 
   环境策略（均在本文件维护，避免 EnvironmentPostProcessor 注入 logging.level.*）：
   - 默认（未激活下列生产类 profile）：root INFO；MyBatis、JDBC、org.peach 等为 DEBUG，便于本地与联调看 SQL/业务日志。
-  - pro / produce / product / test：root WARN；上述噪声包降为 WARN，与旧版 starter 行为一致。
+  - pro / produce / product / test：root WARN；MyBatis/JDBC 等噪声包降为 WARN。
+  - test 额外保留 org.springframework.boot、org.peach.common 为 INFO，避免启动成功/失败结论被降噪后“像没起来”。
 
   仍可覆盖：业务 application.yml 中 logging.level.*（由 Spring Boot 绑定到 Logback）会作用于对应 logger。
   日志目录与归档天数可选：peach.logging.file.*（由 springProperty 读环境，与 TraceIdFilter 中 MDC 键 traceId 无关）。
@@ -75,6 +76,16 @@
 		<logger name="org.mybatis" level="WARN"/>
 		<logger name="java.sql" level="WARN"/>
 		<logger name="org.peach" level="WARN"/>
+	</springProfile>
+
+	<!-- test：降噪但保留 Boot 启动结论、Nacos 注册与失败诊断 INFO/ERROR -->
+	<springProfile name="test">
+		<logger name="org.springframework.boot" level="INFO"/>
+		<logger name="org.springframework.boot.web" level="INFO"/>
+		<logger name="org.springframework.boot.diagnostics" level="ERROR"/>
+		<logger name="org.peach.common" level="INFO"/>
+		<logger name="com.alibaba.cloud.nacos" level="INFO"/>
+		<logger name="com.alibaba.nacos" level="WARN"/>
 	</springProfile>
 
 	<root level="${ROOT_LEVEL}">

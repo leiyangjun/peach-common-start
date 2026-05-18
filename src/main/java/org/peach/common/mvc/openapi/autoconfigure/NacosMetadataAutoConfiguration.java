@@ -4,6 +4,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
@@ -24,6 +25,7 @@ import com.alibaba.cloud.nacos.discovery.NacosDiscoveryAutoConfiguration;
  */
 @AutoConfiguration
 @ConditionalOnClass(NacosDiscoveryProperties.class)
+@ConditionalOnProperty(prefix = "spring.cloud.nacos.discovery", name = "enable", havingValue = "true", matchIfMissing = true)
 @AutoConfigureAfter(NacosDiscoveryAutoConfiguration.class)
 public class NacosMetadataAutoConfiguration {
 
