@@ -7,7 +7,7 @@ import java.lang.reflect.Method;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.peach.common.mvc.autoconfigure.ModuleCodeCache;
+import org.peach.common.mvc.cloud.ModuleCodeCache;
 
 /**
  * {@link RedisKeyPrefixStringRedisSerializer} 前缀剥离与序列化往返单测。

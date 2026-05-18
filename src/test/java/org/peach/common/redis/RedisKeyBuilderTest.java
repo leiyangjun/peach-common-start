@@ -9,7 +9,7 @@ import java.lang.reflect.Method;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.peach.common.mvc.autoconfigure.ModuleCodeCache;
+import org.peach.common.mvc.cloud.ModuleCodeCache;
 
 /**
  * {@link RedisKeyBuilder} 键规则与校验单测（通过反射写入 {@link ModuleCodeCache} 静态字段）。

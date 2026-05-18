@@ -42,8 +42,8 @@ public class ApiContextMappingValidator implements SmartInitializingSingleton {
 						"形态注解仅支持标注在控制器类上，请勿在处理器方法上使用 @AdminApi/@AppApi/@OpenApi"));
 			}
 			ApiContextValidator.declaredClassSurfaceOrNull(beanType);
-			if (properties.isEnable() && properties.getPath() == null) {
-				throw new IllegalStateException("peach.api.context.enable=true 时 path 不能为空");
+			if (properties.isEnabled() && properties.getPath() == null) {
+				throw new IllegalStateException("peach.api.context.enabled=true 时 path 不能为空");
 			}
 		}
 	}

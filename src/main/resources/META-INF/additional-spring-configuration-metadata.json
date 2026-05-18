@@ -1,17 +1,34 @@
 {
   "properties": [
     {
+      "name": "spring.application.name",
+      "type": "java.lang.String",
+      "description": "服务名（非空）；PeachApplicationBootstrapConfiguration 启动校验，供 Nacos 注册、配置 DataId（${spring.application.name}.yaml）等使用。"
+    },
+    {
       "name": "spring.application.module-code",
       "type": "java.lang.String",
-      "description": "服务模块编码（四位，首位字母、后三位字母或数字）；由 ModuleCodeCheckConfiguration 校验后写入 ModuleCodeCache，供 ApiResult/ErrorResult 与 RedisKeyBuilder 等使用。"
+      "description": "服务模块编码（四位，首位字母、后三位字母或数字）；由 PeachApplicationBootstrapConfiguration 校验后写入 ModuleCodeCache，供 ApiResult/ErrorResult 与 RedisKeyBuilder 等使用。"
     },
     {
       "name": "spring.profiles.active",
       "type": "java.lang.String",
-      "description": "Spring Boot 激活 profile，须由下游服务显式配置（Starter 不注入默认值）；ModuleCodeCheckConfiguration 取 Environment.getActiveProfiles()[0] 写入 ModuleCodeCache（须非空，否则启动失败）。"
+      "description": "Spring Boot 激活 profile，须由下游服务显式配置（Starter 不注入默认值）；PeachApplicationBootstrapConfiguration 取 Environment.getActiveProfiles()[0] 写入 ModuleCodeCache（须非空，否则启动失败）。"
     },
     {
-      "name": "peach.api.context.enable",
+      "name": "spring.cloud.nacos.discovery.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 Nacos 服务发现与注册（SCA 官方键名）。Starter 默认 true；为 false 时 PeachNacosBootstrapEnvironmentPostProcessor 关闭注册并排除 Discovery/Registry 自动配置。为 true 时 SCA 联动 spring.cloud.discovery.enabled。",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.cloud.nacos.config.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 Nacos 配置中心（SCA 官方键名）。Starter 默认 true；为 false 时关闭远程配置拉取并排除 NacosConfig 自动配置。为 true 且未声明 spring.config.import 时，Starter 自动注入 optional:nacos:${spring.application.name}.yaml。",
+      "defaultValue": true
+    },
+    {
+      "name": "peach.api.context.enabled",
       "type": "java.lang.Boolean",
       "description": "是否注册 /admin、/app、/openapi 形态路径前缀。为 true 时：控制器类未标注形态注解则使用 peach.api.context.path 默认形态；类上标注 @AdminApi/@AppApi/@OpenApi 则以类为准（不支持方法级）。",
       "defaultValue": true
@@ -19,7 +36,7 @@
     {
       "name": "peach.api.context.path",
       "type": "org.peach.common.mvc.api.context.ApiType",
-      "description": "全局路径前缀对应的形态：admin、app、openapi（YAML 可用 admin/app/openapi）。enable=true 时生效；enable=false 时可省略。",
+      "description": "全局路径前缀对应的形态：admin、app、openapi（YAML 可用 admin/app/openapi）。enabled=true 时生效；enabled=false 时可省略。",
       "defaultValue": "admin"
     },
     {
@@ -120,6 +137,18 @@
       "name": "logging.level.root",
       "type": "java.lang.String",
       "description": "Spring Boot 标准根日志级别；未配置时 logback-spring.xml 按 profile 默认（非 pro/produce/product/test 为 INFO，否则为 WARN），配置后可覆盖。"
+    },
+    {
+      "name": "springdoc.cache.disabled",
+      "type": "java.lang.Boolean",
+      "description": "是否关闭 SpringDoc OpenAPI 文档缓存。Starter 的 OpenApiEnvironmentPostProcessor 在未配置时默认 true，避免经网关/直连切换时 servers 缓存错误；业务工程显式配置可覆盖。",
+      "defaultValue": true
+    },
+    {
+      "name": "springdoc.swagger-ui.persistAuthorization",
+      "type": "java.lang.Boolean",
+      "description": "Swagger UI 是否在刷新后保留 Authorize 中填写的 Token。Starter 的 OpenApiEnvironmentPostProcessor 在未配置时默认 true，下游无需再配；显式设为 false 可关闭。",
+      "defaultValue": true
     }
   ]
 }

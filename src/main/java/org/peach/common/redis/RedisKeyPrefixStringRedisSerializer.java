@@ -2,8 +2,8 @@ package org.peach.common.redis;
 
 import java.nio.charset.StandardCharsets;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.redis.serializer.RedisSerializer;
-import org.springframework.lang.Nullable;
 
 
 /**

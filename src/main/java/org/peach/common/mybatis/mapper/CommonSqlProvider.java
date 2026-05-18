@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.ibatis.jdbc.SQL;
 import org.peach.common.mvc.exception.BizException;
@@ -119,10 +120,6 @@ public final class CommonSqlProvider {
 
 	static boolean isCreateAuditColumn(String column) {
 		return CREATE_AUDIT_COLUMNS.contains(column);
-	}
-
-	private static boolean containsIgnoreCaseText(String source, String part) {
-		return lower(source).contains(lower(part));
 	}
 
 	private static String findColumnIgnoreCase(List<String> columns, String target) {
@@ -548,10 +545,12 @@ public final class CommonSqlProvider {
 	 */
 	public static String getLogicValidValue(Object entityClass) {
 		String field = CommonSqlProvider.getLogicDeleteField(entityClass, false);
-		String isDelete = containsIgnoreCaseText(field, "valid") ? "1" : "0";
-		isDelete = containsIgnoreCaseText(field, "delete") ? "0" : isDelete;
+		// 忽略大小写子串：使用 Lang3 Strings.CI，与全模块弃用 StringUtils.containsIgnoreCase 的写法一致
+		String isDelete = field != null && Strings.CI.contains(field, "valid") ? "1" : "0";
+		isDelete = field != null && Strings.CI.contains(field, "delete") ? "0" : isDelete;
 		Field logicField = getDeclaredField(entityClass, field);
-		if (!containsIgnoreCaseText(field, "valid") && !containsIgnoreCaseText(field, "delete") && logicField != null) {
+		if ((field == null || (!Strings.CI.contains(field, "valid") && !Strings.CI.contains(field, "delete")))
+				&& logicField != null) {
 			LogicDelete logicAn = logicField.getAnnotation(LogicDelete.class);
 			isDelete = logicAn != null ? String.valueOf(logicAn.valid()) : isDelete;
 		}
@@ -567,10 +566,11 @@ public final class CommonSqlProvider {
 	 */
 	public static String getLogicInvalidValue(Object entityClass) {
 		String field = CommonSqlProvider.getLogicDeleteField(entityClass, false);
-		String isDelete = containsIgnoreCaseText(field, "valid") ? "0" : "1";
-		isDelete = containsIgnoreCaseText(field, "delete") ? "1" : isDelete;
+		String isDelete = field != null && Strings.CI.contains(field, "valid") ? "0" : "1";
+		isDelete = field != null && Strings.CI.contains(field, "delete") ? "1" : isDelete;
 		Field logicField = getDeclaredField(entityClass, field);
-		if (!containsIgnoreCaseText(field, "valid") && !containsIgnoreCaseText(field, "delete") && logicField != null) {
+		if ((field == null || (!Strings.CI.contains(field, "valid") && !Strings.CI.contains(field, "delete")))
+				&& logicField != null) {
 			LogicDelete logicAn = logicField.getAnnotation(LogicDelete.class);
 			isDelete = logicAn != null ? String.valueOf(logicAn.invalid()) : isDelete;
 		}

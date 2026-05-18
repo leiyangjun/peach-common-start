@@ -27,7 +27,7 @@ public class ApiContextPathWebMvcConfigurer implements WebMvcConfigurer {
 	public void configurePathMatch(PathMatchConfigurer configurer) {
 		ApiType defaultApiType = properties.getPath();
 		if (defaultApiType == null) {
-			throw new IllegalStateException("peach.api.context.enable=true 时 path 不能为空，请配置 peach.api.context.path 为 admin、app 或 openapi");
+			throw new IllegalStateException("peach.api.context.enabled=true 时 path 不能为空，请配置 peach.api.context.path 为 admin、app 或 openapi");
 		}
 		for (ApiType apiType : ApiType.values()) {
 			final ApiType target = apiType;

@@ -3,7 +3,7 @@ package org.peach.common.mvc.exception;
 import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
-import org.peach.common.mvc.autoconfigure.ModuleCodeCache;
+import org.peach.common.mvc.cloud.ModuleCodeCache;
 import org.peach.common.mvc.result.code.MessageCode;
 import org.springframework.http.HttpStatus;
 
@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
  * 框架内部非 200 响应体：与 {@link BizException}、{@link GlobalExceptionHandler} 同包，类为包可见。
  * <p>
  * 业务码前缀经 {@link ModuleCodeCache#getModule()} 获取，与
- * {@link org.peach.common.mvc.autoconfigure.ModuleCodeCheckConfiguration}、
+ * {@link org.peach.common.mvc.cloud.PeachApplicationBootstrapConfiguration}、
  * {@link org.peach.common.mvc.autoconfigure.SpringApplicationModuleProperties}
  * 约定一致。
  * </p>

@@ -33,10 +33,10 @@ public class ApiContextAutoConfiguration {
 	}
 
 	/**
-	 * 开启 {@code peach.api.context.enable} 时，按形态（默认 path + 类上注解）为业务控制器注册 /admin、/app、/openapi 路径前缀。
+	 * 开启 {@code peach.api.context.enabled} 时，按形态（默认 path + 类上注解）为业务控制器注册 /admin、/app、/openapi 路径前缀。
 	 */
 	@Bean
-	@ConditionalOnProperty(prefix = "peach.api.context", name = "enable", havingValue = "true", matchIfMissing = true)
+	@ConditionalOnProperty(prefix = "peach.api.context", name = "enabled", havingValue = "true", matchIfMissing = true)
 	public WebMvcConfigurer apiContextPathWebMvcConfigurer(ApiContextProperties properties) {
 		return new ApiContextPathWebMvcConfigurer(properties);
 	}

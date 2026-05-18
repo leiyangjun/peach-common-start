@@ -13,7 +13,7 @@
 - 通用 **BaseMapper** + 各类 `*SqlProvider` 动态 SQL。
 - 实体与查询模型注解：`@TableName`、`@ID`、`@LogicDelete`、`@Exclude`、`@Unique`、`@SearchValue`、`@Range` 等。
 - **分页**：`PageSupport` 与查询 DTO 衔接 PageHelper。
-- **业务码**：`spring.application.module-code`（四位）与 `ApiResult` 拼装规则联动（见 `ModuleCodeCheckConfiguration`）。
+- **业务码**：`spring.application.module-code`（四位）与 `ApiResult` 拼装规则联动（见 `PeachApplicationBootstrapConfiguration`）。
 - **登录用户**：经网关转发时从查询参数解析（`LoginUserUtil`，与 `peach-gateway` 注入的 `peach_*` 参数约定一致）。
 - **代码生成**：内嵌 MyBatis Generator 封装，`GeneratorUtil` / `BaseMapperGeneratorUtil` 可从业务代码一键生成 Entity、Mapper 及 MVC 分层骨架。
 
@@ -21,8 +21,9 @@
 
 - 启动类使用 **`@PeachCloud`**（`org.peach.common.mvc.annotation.start`，组合 `@SpringBootApplication` + `@EnableDiscoveryClient`）。
 - Nacos 注册发现、配置中心与 LoadBalancer 已由本 Starter **传递依赖**；下游仅需在 `application.yml` 填写 **`spring.cloud.nacos.server-addr/username/password`**（无 Starter 默认 IP/账号）。
-- **`spring.profiles.active` 须由下游必填**（Starter 的 `application.yml` 不再提供默认值）；`ModuleCodeCheckConfiguration` 等会在无激活 profile 时启动失败。
-- Nacos：`application.yml` 中 namespace 占位为 `${NACOS_NAMESPACE:${spring.profiles.active}}`；若未设 `NACOS_NAMESPACE`，须先有有效 profile，否则 Starter 不会在早期注入 namespace（避免静默连 public）。其余约定（group、DataId=`${spring.application.name}.yaml` 等）由 Starter 默认提供；关闭：`spring.cloud.nacos.discovery.enable=false` / `spring.cloud.nacos.config.enable=false`（默认均为开启）。
+- **`spring.application.name`**、**`spring.profiles.active`**、**`spring.application.module-code`** 须由下游显式配置；`PeachApplicationBootstrapConfiguration` 在启动时校验（任一缺失或 module-code 格式非法则失败）。
+- Nacos 注册与配置中心由 Starter `application.yml` 默认开启（`discovery.enabled` / `config.enabled` 均为 `true`，与 SCA 官方键名一致）；下游填写 `spring.cloud.nacos.server-addr` 等连接信息即可，配置由 SCA/Nacos 拉取；`config.enabled=true` 时 Starter 按 `spring.application.name` 自动补 `optional:nacos:{name}.yaml`（下游无需手写 DataId）。namespace 占位 `${NACOS_NAMESPACE:${spring.profiles.active}}`；`discovery.enabled=true` 时 SCA 会联动 `spring.cloud.discovery.enabled`。
+- **关闭 Nacos（单体等）**：`spring.cloud.nacos.discovery.enabled=false` / `config.enabled=false` 时，`PeachNacosBootstrapEnvironmentPostProcessor` 会关闭注册/远程配置，并 `spring.autoconfigure.exclude` 排除 Nacos Discovery/Registry/Config 自动配置。
 - **未引入本 Starter** 的工程（如独立 Gateway）请自行使用 `@SpringBootApplication` / `@EnableDiscoveryClient` 等。
 
 ## 坐标
@@ -76,8 +77,8 @@
 | 配置类 | 作用摘要 |
 | --- | --- |
 | `PeachLoggingAutoConfiguration` | 日志相关自动配置 |
-| `NacosMetadataAutoConfiguration` | 存在 Nacos Discovery 时写入实例元数据（OpenAPI 等） |
-| `ModuleCodeCheckConfiguration` | 校验 `spring.application.module-code` 与激活 profile（须非空） |
+| `NacosMetadataAutoConfiguration`（`mvc.cloud`） | 存在 Nacos Discovery 时写入实例元数据（OpenAPI 等） |
+| `PeachApplicationBootstrapConfiguration`（`mvc.cloud`） | 校验 `spring.application.name`、`module-code` 与激活 profile |
 | `ReadWriteDataSourceAutoConfiguration` | `spring.datasource.rw.enabled` 读写分离路由 |
 | `MybatisLogAutoConfiguration` | MyBatis SQL 日志 |
 | `ApisAutoConfiguration` | 通用 `ApisController` 等 |
@@ -133,9 +134,11 @@ GeneratorUtil.generateAll(jdbcUrl, user, pass, null,
 ## 开发约定
 
 - **包名**：MyBatis 相关统一为 `org.peach.common.mybatis`（勿与历史 `org.peach.mybatis` 混淆）。
-- **可选依赖**：Nacos 在 `pom.xml` 中为 `optional`，使用 `@PeachCloud` 的业务工程须**显式**添加 `spring-cloud-starter-alibaba-nacos-discovery`。
+- **Nacos**：注册发现与配置中心依赖由本 Starter 传递引入；使用 `@PeachCloud` 时无需再单独声明 Nacos starter（除非刻意排除传递依赖）。
 - **异常**：业务优先抛 `BizException`（`org.peach.common.mvc.exception`），配合 `CrudBizCode` / `MessageCode` 体系。
 - **OpenAPI**：使用 `swagger-annotations-jakarta` 等 jakarta 命名空间，与 Spring Boot 4 对齐。
+- **SpringDoc 默认**：`OpenApiEnvironmentPostProcessor` 在未配置时注入 `springdoc.cache.disabled=true`（避免网关/直连切换时 servers 缓存错误）与 `springdoc.swagger-ui.persistAuthorization=true`；业务工程显式配置可覆盖。
+- **Swagger Authorize（JWT）**：Starter 默认注册全局 HTTP Bearer（`bearerAuth`）并在 Swagger UI 显示 **Authorize** 按钮；刷新页面后仍保留 Token（见上 `persistAuthorization`）。用法：先调登录接口取得 `accessToken`，在 Authorize 中**仅粘贴 JWT 字符串**（勿手写 `Bearer ` 前缀），再 **Try it out** 调试受保护接口。登录等匿名接口若需在文档中显式标为无需鉴权，可在 Controller 上使用 `@SecurityRequirements()`（本次未在 auth 模块统一标注，可按需自行添加）。
 
 ## 后续工作
 

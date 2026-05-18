@@ -18,8 +18,6 @@ import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
-import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
-import org.springframework.web.servlet.mvc.condition.PatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
@@ -178,16 +176,11 @@ public final class ApiMappingUtil {
 	}
 
 	private static List<String> extractPatterns(RequestMappingInfo info) {
-		PathPatternsRequestCondition pathPatterns = info.getPathPatternsCondition();
-		if (pathPatterns != null && !pathPatterns.getPatterns().isEmpty()) {
-			return pathPatterns.getPatterns().stream().map(p -> p.getPatternString()).collect(Collectors.toList());
+		Set<String> patterns = info.getPatternValues();
+		if (patterns == null || patterns.isEmpty()) {
+			return List.of();
 		}
-		// 使用 Ant 风格路径条件时 PathPatterns 可能为空，若不回退则 urlPath 恒空，keyword 无法按路径匹配
-		PatternsRequestCondition ant = info.getPatternsCondition();
-		if (ant != null && !ant.getPatterns().isEmpty()) {
-			return new ArrayList<>(ant.getPatterns());
-		}
-		return List.of();
+		return new ArrayList<>(patterns);
 	}
 
 	/**

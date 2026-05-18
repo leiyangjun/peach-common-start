@@ -1,13 +1,13 @@
 package org.peach.common.redis;
 
-import org.peach.common.mvc.autoconfigure.ModuleCodeCache;
+import org.peach.common.mvc.cloud.ModuleCodeCache;
 
 /**
  * Redis 键前缀构建：{@code {MODULE}-{ACTIVE}-{业务ID}}，段间 {@code '-'}。
  * <p>
  * {@code MODULE}、{@code ACTIVE} 均取自 {@link ModuleCodeCache#getModule()}、
  * {@link ModuleCodeCache#getActive()}（由
- * {@link org.peach.common.mvc.autoconfigure.ModuleCodeCheckConfiguration}
+ * {@link org.peach.common.mvc.cloud.PeachApplicationBootstrapConfiguration}
  * 在校验通过后写入）；此处仅做 trim + 大写规范化。未写入前可能为 {@code null}，则模块段回退 {@code COMM}、环境段回退
  * {@code DEFAULT}。
  * </p>

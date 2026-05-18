@@ -1,4 +1,6 @@
 # Spring Boot 4：使用 org.springframework.boot.EnvironmentPostProcessor 注册（org.springframework.boot.env.* 已弃用）
+# PeachNacosBootstrapEnvironmentPostProcessor 须尽早执行，故排在 Jackson 之前
 org.springframework.boot.EnvironmentPostProcessor=\
-org.peach.common.mvc.autoconfigure.JacksonEnvPostProcessor,\
-org.peach.common.mvc.openapi.autoconfigure.OpenApiEnvironmentPostProcessor
+org.peach.common.mvc.cloud.PeachNacosBootstrapEnvironmentPostProcessor,\
+org.peach.common.mvc.openapi.autoconfigure.OpenApiEnvironmentPostProcessor,\
+org.peach.common.mvc.autoconfigure.JacksonEnvPostProcessor

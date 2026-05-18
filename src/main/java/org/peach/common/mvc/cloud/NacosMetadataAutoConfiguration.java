@@ -1,4 +1,4 @@
-package org.peach.common.mvc.openapi.autoconfigure;
+package org.peach.common.mvc.cloud;
 
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -25,7 +25,7 @@ import com.alibaba.cloud.nacos.discovery.NacosDiscoveryAutoConfiguration;
  */
 @AutoConfiguration
 @ConditionalOnClass(NacosDiscoveryProperties.class)
-@ConditionalOnProperty(prefix = "spring.cloud.nacos.discovery", name = "enable", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "spring.cloud.nacos.discovery", name = "enabled", havingValue = "true", matchIfMissing = true)
 @AutoConfigureAfter(NacosDiscoveryAutoConfiguration.class)
 public class NacosMetadataAutoConfiguration {
 

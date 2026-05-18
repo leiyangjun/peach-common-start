@@ -1,8 +1,9 @@
-package org.peach.common.mvc.autoconfigure;
+package org.peach.common.mvc.cloud;
 
 import java.util.Locale;
 
 import org.apache.commons.lang3.StringUtils;
+import org.peach.common.mvc.autoconfigure.SpringApplicationModuleProperties;
 import org.peach.common.mvc.result.ApiResult;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -11,13 +12,11 @@ import org.springframework.core.env.Environment;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 校验 {@code spring.application.module-code}：去空白后恰好四位，由字母或数字组成，首位须为字母，
- * 规范化后须全大写（配置可大小写混写，写入缓存前统一 {@link String#toUpperCase(Locale)}）。 通过后调用
- * {@link ModuleCodeCache#setCachedModule(String)}，使
- * {@link ModuleCodeCache#getModule()} 与
- * {@link ApiResult}、{@link org.peach.common.mvc.exception.ErrorResult} 拼接业务码一致。
+ * 启动期校验 {@code spring.application.name}、{@code spring.application.module-code} 与激活 profile，
+ * 通过后写入 {@link ModuleCodeCache}，供 {@link ApiResult}、
+ * {@link org.peach.common.mvc.exception.ErrorResult} 等拼接业务码使用。
  * <p>
- * 若校验失败会抛出运行时异常，直接中断 Spring Boot 启动流程（不会进入 Web 层统一异常处理）。
+ * 校验失败抛出运行时异常，中断 Spring Boot 启动（不会进入 Web 层统一异常处理）。
  * </p>
  *
  * @author leiyangjun
@@ -25,10 +24,16 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @AutoConfiguration
 @EnableConfigurationProperties(SpringApplicationModuleProperties.class)
-public class ModuleCodeCheckConfiguration {
+public class PeachApplicationBootstrapConfiguration {
 
-	public ModuleCodeCheckConfiguration(SpringApplicationModuleProperties props, Environment environment) {
-		// 恰好 4 位：首位 A–Z，后 3 位 A–Z 或 0–9；与 trim + 大写后的串匹配
+	public PeachApplicationBootstrapConfiguration(SpringApplicationModuleProperties props, Environment environment) {
+		String applicationName = environment.getProperty("spring.application.name");
+		if (StringUtils.isBlank(applicationName)) {
+			String reason = "spring.application.name 未配置或为空（须显式指定服务名，供 Nacos 注册与配置 DataId 等使用）";
+			log.error("启动失败：{}。请检查 application.yml 或 SPRING_APPLICATION_NAME", reason);
+			throw new IllegalStateException("启动失败：" + reason);
+		}
+
 		String regex = "^[A-Z][A-Z0-9]{3}$";
 		String rawModule = props.getModuleCode();
 		String active = resolveActiveProfile(environment);

@@ -1,6 +1,6 @@
 package org.peach.common.mvc.result;
 
-import org.peach.common.mvc.autoconfigure.ModuleCodeCache;
+import org.peach.common.mvc.cloud.ModuleCodeCache;
 import org.peach.common.mvc.result.code.Message200;
 import org.springframework.http.HttpStatus;
 

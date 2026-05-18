@@ -83,7 +83,7 @@ public final class ApiContextValidator {
 	 */
 	public static ApiType effectiveClassSurface(Class<?> beanType, ApiType defaultApiType) {
 		if (defaultApiType == null) {
-			throw new IllegalStateException("peach.api.context.enable=true 时默认形态 path 不能为空");
+			throw new IllegalStateException("peach.api.context.enabled=true 时默认形态 path 不能为空");
 		}
 		ApiType declared = declaredClassSurfaceOrNull(beanType);
 		return declared != null ? declared : defaultApiType;
